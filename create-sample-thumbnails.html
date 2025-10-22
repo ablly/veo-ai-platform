@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生成视频缩略图</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .thumbnail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .thumbnail-card {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f9f9f9;
+        }
+        .thumbnail {
+            width: 100%;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .thumbnail-info {
+            padding: 15px;
+            background: white;
+        }
+        .thumbnail-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .thumbnail-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .download-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .download-btn:hover {
+            opacity: 0.9;
+        }
+        .instructions {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .instructions h3 {
+            color: #0c5460;
+            margin-top: 0;
+        }
+        .instructions ol {
+            color: #0c5460;
+            line-height: 1.6;
+        }
+        
+        /* 不同主题的渐变背景 */
+        .future-city { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .ancient-palace { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .space-walk { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .underwater { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .forest-fairy { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .steampunk { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 VEO AI 视频广场缩略图生成器</h1>
+        
+        <div class="thumbnail-grid">
+            <div class="thumbnail-card">
+                <div class="thumbnail future-city">
+                    🌃<br>未来城市夜景<br>霓虹灯闪烁<br>飞行汽车穿梭
+                </div>
+                <div class="thumbnail-info">
+                    <div class="thumbnail-title">未来城市夜景</div>
+                    <div class="thumbnail-desc">霓虹灯闪烁的未来都市，飞行汽车穿梭其间，科技感十足</div>
+                    <button class="download-btn" onclick="downloadThumbnail('future-city', 'future-city-night.jpg')">
+                        下载缩略图
+                    </button>
+                </div>
+            </div>
+
+            <div class="thumbnail-card">
+                <div class="thumbnail ancient-palace">
+                    🏯<br>古代宫殿庭院<br>樱花飞舞<br>古典建筑
+                </div>
+                <div class="thumbnail-info">
+                    <div class="thumbnail-title">古代宫殿庭院</div>
+                    <div class="thumbnail-desc">古典优雅的中式宫殿庭院，樱花飞舞，古韵悠长</div>
+                    <button class="download-btn" onclick="downloadThumbnail('ancient-palace', 'ancient-palace-garden.jpg')">
+                        下载缩略图
+                    </button>
+                </div>
+            </div>
+
+            <div class="thumbnail-card">
+                <div class="thumbnail space-walk">
+                    🚀<br>太空漫步<br>地球背景<br>宇航员探索
+                </div>
+                <div class="thumbnail-info">
+                    <div class="thumbnail-title">太空漫步</div>
+                    <div class="thumbnail-desc">宇航员在浩瀚太空中漫步，地球在背景中缓缓转动</div>
+                    <button class="download-btn" onclick="downloadThumbnail('space-walk', 'space-walk.jpg')">
+                        下载缩略图
+                    </button>
+                </div>
+            </div>
+
+            <div class="thumbnail-card">
+                <div class="thumbnail underwater">
+                    🐠<br>海底世界探索<br>珊瑚礁<br>热带鱼群
+                </div>
+                <div class="thumbnail-info">
+                    <div class="thumbnail-title">海底世界探索</div>
+                    <div class="thumbnail-desc">神秘的深海世界，五彩斑斓的珊瑚礁和游鱼</div>
+                    <button class="download-btn" onclick="downloadThumbnail('underwater', 'underwater-exploration.jpg')">
+                        下载缩略图
+                    </button>
+                </div>
+            </div>
+
+            <div class="thumbnail-card">
+                <div class="thumbnail forest-fairy">
+                    🧚‍♀️<br>森林精灵舞蹈<br>月光萤火虫<br>魔法森林
+                </div>
+                <div class="thumbnail-info">
+                    <div class="thumbnail-title">森林精灵舞蹈</div>
+                    <div class="thumbnail-desc">魔法森林中，精灵们在月光下翩翩起舞</div>
+                    <button class="download-btn" onclick="downloadThumbnail('forest-fairy', 'forest-fairy-dance.jpg')">
+                        下载缩略图
+                    </button>
+                </div>
+            </div>
+
+            <div class="thumbnail-card">
+                <div class="thumbnail steampunk">
+                    ⚙️<br>机械朋克工厂<br>齿轮蒸汽<br>工业美学
+                </div>
+                <div class="thumbnail-info">
+                    <div class="thumbnail-title">机械朋克工厂</div>
+                    <div class="thumbnail-desc">蒸汽朋克风格的机械工厂，齿轮转动，蒸汽升腾</div>
+                    <button class="download-btn" onclick="downloadThumbnail('steampunk', 'steampunk-factory.jpg')">
+                        下载缩略图
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 使用说明</h3>
+            <ol>
+                <li><strong>生成缩略图</strong>：点击每个卡片下方的"下载缩略图"按钮</li>
+                <li><strong>保存文件</strong>：将下载的图片保存到 <code>public/images/thumbnails/</code> 目录</li>
+                <li><strong>获取视频</strong>：使用VEO AI生成器根据描述生成对应视频</li>
+                <li><strong>放置视频</strong>：将视频文件保存到 <code>public/videos/</code> 目录</li>
+                <li><strong>刷新页面</strong>：访问视频广场查看效果</li>
+            </ol>
+            
+            <h3>🎯 VEO生成建议</h3>
+            <p>访问 <a href="https://veo3o1.com/" target="_blank">VEO 3.1 AI生成器</a> 或 <a href="https://ai.easeus.com/veo-3-video-generator" target="_blank">EaseMate VEO生成器</a>，使用卡片中的描述作为提示词生成高质量视频。</p>
+        </div>
+    </div>
+
+    <script>
+        function downloadThumbnail(theme, filename) {
+            // 创建canvas来生成缩略图
+            const canvas = document.createElement('canvas');
+            canvas.width = 1280;
+            canvas.height = 720;
+            const ctx = canvas.getContext('2d');
+
+            // 根据主题设置渐变背景
+            const gradients = {
+                'future-city': ['#667eea', '#764ba2'],
+                'ancient-palace': ['#f093fb', '#f5576c'],
+                'space-walk': ['#4facfe', '#00f2fe'],
+                'underwater': ['#43e97b', '#38f9d7'],
+                'forest-fairy': ['#fa709a', '#fee140'],
+                'steampunk': ['#a8edea', '#fed6e3']
+            };
+
+            const [color1, color2] = gradients[theme] || ['#667eea', '#764ba2'];
+            
+            // 创建渐变
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, color1);
+            gradient.addColorStop(1, color2);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 添加文字
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 80px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const titles = {
+                'future-city': '🌃 未来城市夜景',
+                'ancient-palace': '🏯 古代宫殿庭院',
+                'space-walk': '🚀 太空漫步',
+                'underwater': '🐠 海底世界探索',
+                'forest-fairy': '🧚‍♀️ 森林精灵舞蹈',
+                'steampunk': '⚙️ 机械朋克工厂'
+            };
+
+            ctx.fillText(titles[theme] || '🎬 VEO AI视频', canvas.width/2, canvas.height/2);
+
+            // 添加副标题
+            ctx.font = 'bold 40px Arial';
+            ctx.fillText('VEO AI 生成', canvas.width/2, canvas.height/2 + 100);
+
+            // 转换为图片并下载
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 'image/jpeg', 0.9);
+        }
+    </script>
+</body>
+</html>

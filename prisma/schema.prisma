@@ -1,0 +1,328 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id                String                @id @default(cuid())
+  email             String                @unique
+  name              String?
+  phone             String?               @unique
+  avatar            String?
+  emailVerified     DateTime?
+  password          String?
+  
+  // 第三方登录信息
+  accounts          Account[]
+  sessions          Session[]
+  
+  // 积分账户
+  creditAccount     UserCreditAccount?
+  creditTransactions CreditTransaction[]
+  
+  // 视频生成记录
+  videoGenerations  VideoGeneration[]
+  
+  // API权限
+  apiPermissions    UserApiPermission[]
+  
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@map("users")
+}
+
+// NextAuth相关表
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+// 积分套餐表
+model CreditPackage {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  credits         Int
+  price           Decimal
+  originalPrice   Decimal
+  features        Json?
+  isPopular       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  
+  // 购买记录
+  transactions    CreditTransaction[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("credit_packages")
+}
+
+// 用户积分账户表
+model UserCreditAccount {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  totalCredits      Int      @default(0)
+  availableCredits  Int      @default(0)
+  usedCredits       Int      @default(0)
+  frozenCredits     Int      @default(0)
+  expiresAt         DateTime?
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("user_credit_accounts")
+}
+
+// 积分交易记录表
+model CreditTransaction {
+  id              String            @id @default(cuid())
+  userId          String
+  transactionType TransactionType
+  creditAmount    Int
+  balanceBefore   Int
+  balanceAfter    Int
+  relatedOrderId  String?
+  relatedVideoId  String?
+  packageId       String?
+  description     String?
+  
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package         CreditPackage?    @relation(fields: [packageId], references: [id])
+  
+  createdAt       DateTime          @default(now())
+
+  @@map("credit_transactions")
+}
+
+enum TransactionType {
+  PURCHASE
+  CONSUME
+  REFUND
+  EXPIRE
+  BONUS
+}
+
+// 视频生成记录表
+model VideoGeneration {
+  id              String              @id @default(cuid())
+  userId          String
+  prompt          String              @db.Text
+  referenceImages Json?
+  videoUrl        String?
+  thumbnailUrl    String?
+  duration        Int?
+  resolution      String?
+  status          VideoGenerationStatus @default(PENDING)
+  queuePosition   Int?
+  processingTime  Int?
+  errorMessage    String?
+  creditsConsumed Int                 @default(0)
+  
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime            @default(now())
+  completedAt     DateTime?
+
+  @@map("video_generations")
+}
+
+enum VideoGenerationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// API密钥池管理表
+model ApiKeyPool {
+  id                String            @id @default(cuid())
+  apiKey            String            @unique
+  keyType           ApiKeyType        @default(GENERATED)
+  planLevel         PlanLevel?
+  status            ApiKeyStatus      @default(AVAILABLE)
+  assignedUserId    String?
+  assignedAt        DateTime?
+  generatedAt       DateTime          @default(now())
+  expiresAt         DateTime?
+  generationMethod  GenerationMethod  @default(AUTO_PUPPETEER)
+  usageCount        Int               @default(0)
+  lastUsedAt        DateTime?
+  
+  // API权限关联
+  userPermissions   UserApiPermission[]
+  
+  createdAt         DateTime          @default(now())
+
+  @@map("api_key_pool")
+}
+
+enum ApiKeyType {
+  SEED
+  GENERATED
+  BACKUP
+}
+
+enum PlanLevel {
+  BASIC
+  ADVANCED
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum ApiKeyStatus {
+  AVAILABLE
+  ASSIGNED
+  GENERATING
+  FAILED
+  SUSPENDED
+}
+
+enum GenerationMethod {
+  MANUAL
+  AUTO_PUPPETEER
+  API_OFFICIAL
+}
+
+// 用户API权限表
+model UserApiPermission {
+  id              String     @id @default(cuid())
+  userId          String
+  apiKeyId        String
+  creditsTotal    Int
+  creditsUsed     Int        @default(0)
+  rateLimitPerHour Int       @default(10)
+  isActive        Boolean    @default(true)
+  expiresAt       DateTime?
+  
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey          ApiKeyPool @relation(fields: [apiKeyId], references: [id])
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@map("user_api_permissions")
+}
+
+// 密钥生成任务队列
+model KeyGenerationQueue {
+  id              String              @id @default(cuid())
+  userId          String
+  planId          String?
+  priority        Int                 @default(1)
+  status          QueueStatus         @default(PENDING)
+  retryCount      Int                 @default(0)
+  maxRetries      Int                 @default(3)
+  errorMessage    String?
+  generatedKeyId  String?
+  
+  createdAt       DateTime            @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  @@map("key_generation_queue")
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// 支付订单表
+model PaymentOrder {
+  id              String        @id @default(cuid())
+  userId          String
+  packageId       String
+  outTradeNo      String        @unique
+  tradeNo         String?
+  paymentMethod   PaymentMethod
+  amount          Decimal
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  notifyData      Json?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("payment_orders")
+}
+
+enum PaymentMethod {
+  ALIPAY
+  WECHAT
+  UNIONPAY
+  APPLEPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+// API使用统计表
+model ApiUsageStats {
+  id            String   @id @default(cuid())
+  userId        String
+  apiKeyId      String?
+  date          DateTime @db.Date
+  requestsCount Int      @default(0)
+  successCount  Int      @default(0)
+  errorCount    Int      @default(0)
+  totalCost     Decimal  @default(0.00)
+  
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, apiKeyId, date])
+  @@map("api_usage_stats")
+}

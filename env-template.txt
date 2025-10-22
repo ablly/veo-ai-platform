@@ -1,0 +1,28 @@
+# VEO AI 平台环境变量配置模板
+# 复制此文件为 .env 并填入真实的配置值
+
+# 数据库配置
+DATABASE_URL="postgresql://postgres:bxbbyffb4y4djTx3@db.hblthmkkdfkzvpywlthq.supabase.co:5432/postgres"
+
+# NextAuth.js 配置
+NEXTAUTH_SECRET="veo-ai-nextauth-secret-key-2025-production-secure-random-string-12345678"
+NEXTAUTH_URL="http://localhost:3000"
+
+# 邮件服务配置 (Resend)
+RESEND_API_KEY="re_123456789_production_key_placeholder"
+EMAIL_FROM="VEO AI <noreply@veo-ai.com>"
+
+# 短信服务配置 (Twilio)
+TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+TWILIO_AUTH_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+TWILIO_PHONE_NUMBER="+1xxxxxxxxxx"
+
+# 微信登录配置 (需要在微信开放平台申请)
+WECHAT_APP_ID="wxxxxxxxxxxxxxxxxx"
+WECHAT_APP_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# 环境配置
+NODE_ENV="production"
+
+
+
