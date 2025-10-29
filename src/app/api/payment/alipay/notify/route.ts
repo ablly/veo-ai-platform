@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         const order = orderResult.rows[0]
 
         // 3. 验证支付金额（关键！）
-        const orderAmount = parseFloat(order.amount)
+        const orderAmount = parseFloat(order.payment_amount)
         const paidAmount = parseFloat(total_amount)
         
         if (!validatePaymentAmount(orderAmount, paidAmount)) {
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
           packageName: packageInfo.name,
           credits: packageInfo.credits,
           expiresAt: expiresAt.toLocaleDateString('zh-CN'),
-          amount: parseFloat(order.amount)
+          amount: parseFloat(order.payment_amount)
         }).catch(error => {
           logger.error('发送购买成功邮件失败', { error })
         })
