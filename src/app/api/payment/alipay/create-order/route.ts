@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       // 调用支付宝SDK生成支付链接
       const paymentResult = await createAlipayPayment({
         outTradeNo: orderId,
-        totalAmount: pkg.price,
+        totalAmount: parseFloat(pkg.price), // 确保是数字类型
         subject: pkg.name,
         body: `购买${pkg.name} - ${pkg.credits}积分`
       })
@@ -200,10 +200,20 @@ async function createAlipayPayment(params: {
       }
     }
 
+    // 确保金额是数字类型并格式化
+    const amount = typeof params.totalAmount === 'number' ? params.totalAmount : parseFloat(params.totalAmount)
+    if (isNaN(amount) || amount <= 0) {
+      console.error('❌ 支付金额无效:', params.totalAmount)
+      return {
+        success: false,
+        message: '支付金额无效'
+      }
+    }
+
     // 构建支付请求参数
     const bizContent = {
       out_trade_no: params.outTradeNo,
-      total_amount: params.totalAmount.toFixed(2),
+      total_amount: amount.toFixed(2),
       subject: params.subject,
       body: params.body,
       product_code: 'FAST_INSTANT_TRADE_PAY', // 即时到账
