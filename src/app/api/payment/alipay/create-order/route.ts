@@ -151,7 +151,21 @@ async function createAlipayPayment(params: {
 }) {
   try {
     const ALIPAY_APP_ID = process.env.ALIPAY_APP_ID
-    const ALIPAY_PRIVATE_KEY = process.env.ALIPAY_PRIVATE_KEY
+    
+    // 支持分段私钥（解决EdgeOne环境变量长度限制）
+    let ALIPAY_PRIVATE_KEY = process.env.ALIPAY_PRIVATE_KEY
+    if (!ALIPAY_PRIVATE_KEY) {
+      // 尝试拼接分段私钥
+      const key1 = process.env.ALIPAY_PRIVATE_KEY_1
+      const key2 = process.env.ALIPAY_PRIVATE_KEY_2
+      const key3 = process.env.ALIPAY_PRIVATE_KEY_3
+      const key4 = process.env.ALIPAY_PRIVATE_KEY_4
+      
+      if (key1 && key2 && key3 && key4) {
+        ALIPAY_PRIVATE_KEY = key1 + key2 + key3 + key4
+      }
+    }
+    
     const ALIPAY_GATEWAY = process.env.ALIPAY_GATEWAY || 'https://openapi.alipay.com/gateway.do'
     const NOTIFY_URL = process.env.NEXTAUTH_URL + '/api/payment/alipay/notify'
     const RETURN_URL = process.env.NEXTAUTH_URL + '/credits'
