@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Shield, Mail, Send, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminLoginPage() {
+  const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
   const [step, setStep] = useState<'email' | 'code'>('email')
@@ -14,6 +15,18 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const router = useRouter()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-white">加载中...</div>
+      </div>
+    )
+  }
 
   const sendVerificationCode = async () => {
     if (!email) {
