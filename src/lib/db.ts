@@ -3,21 +3,28 @@ import { Pool } from "pg"
 // Supabase数据库连接池配置
 // 注意：Supabase有两种连接方式：
 // 1. 直连（Direct Connection）：db.xxx.supabase.co:5432
-// 2. 连接池（Pooler）：aws-0-xxx.pooler.supabase.com:6543
+// 2. 连接池（Pooler）：aws-xxx.pooler.supabase.com:6543
 // 
-// 使用直连方式连接Supabase数据库
-// 格式：postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
-const connectionString = process.env.DATABASE_URL ||  "postgresql://postgres:bxbbyffb4y4djTx3@db.hblthmkkdfkzvpywlthq.supabase.co:5432/postgres"
+// 优先使用环境变量中的连接字符串
+const connectionString = process.env.DATABASE_URL
+
+if (!connectionString) {
+  throw new Error('❌ DATABASE_URL 环境变量未设置！请检查 .env 文件')
+}
+
+console.log('🔗 使用数据库连接:', connectionString.replace(/:([^:@]+)@/, ':****@'))
 
 export const pool = new Pool({
   connectionString: connectionString,
   ssl: {
     rejectUnauthorized: false,
   },
-  max: 10, // 连接池最大连接数
-  min: 2,  // 最小连接数
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: 20, // 连接池最大连接数（增加）
+  min: 1,  // 最小连接数（减少）
+  idleTimeoutMillis: 60000, // 空闲超时（增加到60秒）
+  connectionTimeoutMillis: 20000, // 连接超时（增加到20秒）
+  acquireTimeoutMillis: 20000, // 获取连接超时
+  createTimeoutMillis: 20000, // 创建连接超时
 })
 
 // 监听连接事件
