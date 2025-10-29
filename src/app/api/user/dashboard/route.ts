@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { Pool } from "pg"
-
-const pool = new Pool({
-  connectionString: "postgresql://postgres:bxbbyffb4y4djTx3@db.hblthmkkdfkzvpywlthq.supabase.co:5432/postgres",
-  ssl: { rejectUnauthorized: false },
-  max: 5,
-})
+import pool from "@/lib/db"
 
 export async function GET() {
   const client = await pool.connect()

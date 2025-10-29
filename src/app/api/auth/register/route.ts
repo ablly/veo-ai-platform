@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcryptjs from "bcryptjs"
 import { z } from "zod"
-import { Pool } from "pg"
+import pool from "@/lib/db"
 import { CREDIT_CONFIG } from "@/config/credits"
-
-// 临时直接在这里创建连接池用于测试
-const pool = new Pool({
-  connectionString: "postgresql://postgres:bxbbyffb4y4djTx3@db.hblthmkkdfkzvpywlthq.supabase.co:5432/postgres",
-  ssl: { rejectUnauthorized: false },
-  max: 5,
-})
 
 const registerSchema = z.object({
   name: z.string().min(2, "姓名至少需要2个字符"),
