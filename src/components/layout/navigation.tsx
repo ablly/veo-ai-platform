@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
@@ -42,17 +41,8 @@ export function Navigation() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
-              <Image 
-                src="/icon.png" 
-                alt="VEO AI" 
-                width={40} 
-                height={40}
-                className="w-full h-full object-cover"
-              />
-            </div>
             <div>
-              <span className="font-bold text-xl text-white">VEO AI</span>
+              <span className="font-bold text-2xl text-white">VEO AI</span>
               <div className="text-xs text-white/60 -mt-1">视频创作平台</div>
             </div>
           </Link>
