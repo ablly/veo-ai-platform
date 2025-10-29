@@ -183,9 +183,7 @@ export function VideoInput({
               <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs font-bold">!</span>
               </div>
-              <span>
-                积分不足，还需要 <span className="font-bold">{totalCredits - userCredits} 积分</span>
-              </span>
+              <span>积分不足，请充值</span>
             </div>
           )}
         </div>

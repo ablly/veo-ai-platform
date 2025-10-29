@@ -56,6 +56,10 @@ export default function AdminLayout({
 
   // 严格的权限检查
   useEffect(() => {
+    // 如果是登录页，跳过权限检查
+    if (pathname === "/admin/login") {
+      return
+    }
     if (status === "loading") return
 
     if (!session?.user?.email) {
@@ -80,7 +84,12 @@ export default function AdminLayout({
     } else {
       console.log("✅ 管理员权限验证通过")
     }
-  }, [session, status])
+  }, [session, status, pathname])
+
+  // 如果是登录页，直接渲染子组件，不进行权限检查
+  if (pathname === "/admin/login") {
+    return <>{children}</>
+  }
 
   // 强制检查：如果没有会话或权限，立即阻止渲染
   if (status !== "loading" && (!session?.user?.email || session.user.email !== "3533912007@qq.com")) {

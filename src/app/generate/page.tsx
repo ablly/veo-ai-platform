@@ -99,7 +99,22 @@ export default function GeneratePage() {
 
     } catch (error) {
       console.error("生成失败:", error)
-      alert(error instanceof Error ? error.message : "生成失败，请稍后重试")
+      
+      let errorMessage = "生成失败，请稍后重试"
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        // 特殊错误处理
+        if (error.message.includes("余额不足")) {
+          errorMessage = "⚠️ 服务暂时不可用，API服务商账户余额不足，管理员正在处理中。请稍后重试或联系客服。"
+        } else if (error.message.includes("积分不足")) {
+          errorMessage = "💳 积分不足，请充值"
+        } else if (error.message.includes("过期")) {
+          errorMessage = "⏰ 套餐已过期，请续费后继续使用"
+        }
+      }
+      
+      alert(errorMessage)
       setGenerationData(prev => ({ ...prev, isGenerating: false }))
     }
   }

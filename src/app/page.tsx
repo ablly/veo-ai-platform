@@ -32,6 +32,8 @@ export default function HomePage() {
     images: [],
     isGenerating: false
   })
+  const [userCredits, setUserCredits] = useState<number | null>(null)
+  const [loadingCredits, setLoadingCredits] = useState(true)
 
   const handleStartCreating = () => {
     if (session) {
@@ -50,6 +52,17 @@ export default function HomePage() {
 
     if (!generationData.prompt.trim()) {
       alert("请输入视频描述")
+      return
+    }
+
+    // 计算所需积分
+    const baseCredits = 15
+    const imageCredits = generationData.images.length * 5
+    const totalCredits = baseCredits + imageCredits
+
+    // 检查积分是否足够
+    if (userCredits !== null && userCredits < totalCredits) {
+      alert("积分不足，请充值")
       return
     }
     
@@ -129,8 +142,7 @@ export default function HomePage() {
         if (error.message.includes("余额不足")) {
           errorMessage = "⚠️ 服务暂时不可用\n\nAPI服务商账户余额不足，管理员正在处理中。\n请稍后重试或联系客服。"
         } else if (error.message.includes("积分不足")) {
-          errorMessage = "💳 积分不足\n\n" + error.message + "\n\n点击确定前往充值页面"
-          // 可以在这里添加跳转到充值页面的逻辑
+          errorMessage = "💳 积分不足，请充值"
         } else if (error.message.includes("过期")) {
           errorMessage = "⏰ 套餐已过期\n\n" + error.message + "\n\n请续费后继续使用"
         }
@@ -140,6 +152,32 @@ export default function HomePage() {
       setGenerationData(prev => ({ ...prev, isGenerating: false }))
     }
   }
+
+  // 获取用户积分余额
+  useEffect(() => {
+    const fetchCredits = async () => {
+      if (!session) {
+        setLoadingCredits(false)
+        return
+      }
+      
+      try {
+        const response = await fetch("/api/user/credits/balance")
+        if (response.ok) {
+          const data = await response.json()
+          setUserCredits(data.credits.available)
+        } else {
+          console.error("获取积分失败:", response.status)
+        }
+      } catch (error) {
+        console.error("获取积分失败:", error)
+      } finally {
+        setLoadingCredits(false)
+      }
+    }
+
+    fetchCredits()
+  }, [session])
 
   // 预加载关键页面
   useEffect(() => {
@@ -334,12 +372,53 @@ export default function HomePage() {
                 </p>
               </div>
 
+              {/* 积分信息显示 */}
+              {session && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 mb-4">
+                  <div className="space-y-3">
+                    {/* 当前积分余额 */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-sm text-white/80">
+                        <motion.div
+                          className="w-4 h-4 bg-yellow-400 rounded-full"
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                        <span>当前积分余额:</span>
+                      </div>
+                      <div className="text-sm font-bold">
+                        {loadingCredits ? (
+                          <div className="w-4 h-4 border border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : userCredits !== null ? (
+                          <span className={userCredits >= (15 + generationData.images.length * 5) ? "text-green-400" : "text-red-400"}>
+                            {userCredits} 积分
+                          </span>
+                        ) : (
+                          <span className="text-white/50">获取失败</span>
+                        )}
+                      </div>
+                    </div>
+
+
+                    {/* 积分不足提示 */}
+                    {userCredits !== null && userCredits < (15 + generationData.images.length * 5) && (
+                      <div className="flex items-center space-x-2 text-sm text-red-400 bg-red-500/20 p-3 rounded-lg border border-red-500/30">
+                        <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">!</span>
+                        </div>
+                        <span>积分不足，请充值</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* 生成按钮 */}
               <div className="pt-4">
                 {session ? (
                   <Button
                     onClick={handleGenerate}
-                    disabled={!generationData.prompt.trim() || generationData.isGenerating}
+                    disabled={!generationData.prompt.trim() || generationData.isGenerating || (userCredits !== null && userCredits < (15 + generationData.images.length * 5))}
                     className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {generationData.isGenerating ? (

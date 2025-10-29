@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [countdown, setCountdown] = useState(0)
   const router = useRouter()
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,11 +73,19 @@ export default function RegisterPage() {
       }
 
       setSuccess(true)
+      setCountdown(3)
       
-      // 注册成功后直接跳转到登录页面
-      setTimeout(() => {
-        router.push("/login?message=注册成功，请登录")
-      }, 2000)
+      // 开始倒计时
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            router.push("/login?message=注册成功，请登录")
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
 
     } catch (error) {
       console.error("注册错误:", error)
@@ -107,11 +116,27 @@ export default function RegisterPage() {
           <p className="text-white/70 mb-6">
             欢迎加入VEO AI，正在为您准备专属工作台...
           </p>
-          <motion.div
-            className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full mx-auto"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
+          {countdown > 0 ? (
+            <div className="text-center">
+              <p className="text-white/80 mb-4">
+                {countdown} 秒后自动跳转到登录页面
+              </p>
+              <motion.div
+                className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full mx-auto mb-4"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              />
+              <Button
+                onClick={() => router.push("/login?message=注册成功，请登录")}
+                className="bg-white/20 hover:bg-white/30 text-white border border-white/30"
+                variant="outline"
+              >
+                立即跳转
+              </Button>
+            </div>
+          ) : (
+            <p className="text-white/80">正在跳转...</p>
+          )}
         </motion.div>
       </div>
     )

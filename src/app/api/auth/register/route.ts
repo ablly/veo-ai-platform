@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       console.log("✅ 用户创建成功，ID:", newUser.id)
       
       // 4. 创建积分账户（赠送新用户体验积分）
-      const bonusCredits = CREDIT_CONFIG.NEW_USER_BONUS
+      const bonusCredits = CREDIT_CONFIG.WELCOME_CREDITS
       await client.query(
         `INSERT INTO user_credit_accounts 
          (user_id, total_credits, available_credits, used_credits, frozen_credits, created_at, updated_at) 
