@@ -34,8 +34,9 @@ export async function POST(req: NextRequest) {
       console.log(`ℹ️ 交易状态不是成功状态: ${trade_status}，返回成功但不处理`)
       return NextResponse.json({ success: true, message: 'Trade not completed' })
     }
-      // 开始数据库事务
-      const client = await pool.connect()
+
+    // 开始数据库事务
+    const client = await pool.connect()
       
       try {
         await client.query('BEGIN')
@@ -197,7 +198,6 @@ export async function POST(req: NextRequest) {
       } finally {
         client.release()
       }
-    }
 
   } catch (error) {
     console.error('支付宝回调处理失败:', error)
