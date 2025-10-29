@@ -199,8 +199,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, message: 'Notification received' })
-
   } catch (error) {
     console.error('支付宝回调处理失败:', error)
     return NextResponse.json({ success: false, message: 'Internal error' }, { status: 500 })
