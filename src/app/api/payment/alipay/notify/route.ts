@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
              is_expired = false,
              package_name = $4,
              updated_at = NOW()`,
-          [order.user_id, order.credits, expiresAt, packageInfo.name]
+          [order.user_id, packageInfo.credits, expiresAt, packageInfo.name]
         )
 
         // 记录积分变动
@@ -142,8 +142,8 @@ export async function POST(req: NextRequest) {
           WHERE uca.user_id = $1`,
           [
             order.user_id,
-            order.credits,
-            `购买${order.package_name}`,
+            packageInfo.credits,
+            `购买${packageInfo.name}`,
             order.id
           ]
         )
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
           email: user.email,
           userName: user.name || user.email.split('@')[0],
           packageName: packageInfo.name,
-          credits: order.credits,
+          credits: packageInfo.credits,
           expiresAt: expiresAt.toLocaleDateString('zh-CN'),
           amount: parseFloat(order.amount)
         }).catch(error => {
@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
           alipayTradeNo: trade_no,
           userId: order.user_id,
           packageName: packageInfo.name,
-          credits: order.credits,
+          credits: packageInfo.credits,
           amount: paidAmount,
           expiresAt: expiresAt.toISOString(),
           buyerId: buyer_id,

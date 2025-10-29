@@ -90,14 +90,13 @@ export async function POST(req: NextRequest) {
         await client.query(
           `INSERT INTO credit_orders (
             id, order_number, user_id, package_id, 
-            credits, amount, payment_method, status, created_at, expires_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW() + INTERVAL '30 minutes')`,
+            amount, payment_method, status, created_at, expires_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW() + INTERVAL '30 minutes')`,
           [
             dbOrderId,
             orderId,
             userId,
             pkg.id,
-            pkg.credits,
             pkg.price,
             'ALIPAY',
             'PENDING'
