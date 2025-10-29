@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
       if (credits > 0) {
         await client.query(
           `INSERT INTO credit_transactions (
-            user_id, type, amount, balance_after, description, created_at
-          ) VALUES ($1, 'ADMIN_ADD', $2, $2, $3, NOW())`,
+            user_id, transaction_type, credit_amount, balance_after, description, created_at
+          ) VALUES ($1, 'BONUS', $2, $2, $3, NOW())`,
           [newUser.id, credits, `管理员添加用户时赠送 ${credits} 积分`]
         )
       }

@@ -129,11 +129,11 @@ export async function POST(req: NextRequest) {
         // 记录积分变动
         await client.query(
           `INSERT INTO credit_transactions (
-            user_id, type, amount, description, 
+            user_id, transaction_type, credit_amount, description, 
             balance_before, balance_after, 
             related_order_id, created_at
-          ) 
-          SELECT 
+          )
+          SELECT
             $1, 'PURCHASE', $2, $3,
             COALESCE(uca.available_credits, 0) - $2,
             COALESCE(uca.available_credits, 0),

@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
           // 记录积分变动
           await client.query(
             `INSERT INTO credit_transactions (
-              user_id, type, amount, description, 
+              user_id, transaction_type, credit_amount, description, 
               balance_before, balance_after, created_at
             ) VALUES ($1, 'REFUND', $2, $3, $4, $5, NOW())`,
             [
