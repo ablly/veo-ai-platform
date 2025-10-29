@@ -24,10 +24,10 @@ export const metadata: Metadata = {
   viewport: "width=device-width, initial-scale=1",
   icons: {
     icon: [
-      { url: '/icon.png', type: 'image/png' },
-      { url: '/favicon.ico', sizes: 'any' }
+      { url: '/icon.png?v=20251029', type: 'image/png' },
+      { url: '/favicon.ico?v=20251029', sizes: 'any' }
     ],
-    apple: '/icon.png',
+    apple: '/icon.png?v=20251029',
   },
 };
 
