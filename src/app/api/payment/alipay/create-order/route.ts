@@ -46,10 +46,19 @@ export async function POST(req: NextRequest) {
     )
 
     if (packageResult.rows.length === 0) {
+      console.error(`❌ 套餐不存在或已下架: ${packageId}`)
       return NextResponse.json({ success: false, message: '套餐不存在或已下架' }, { status: 404 })
     }
 
     const pkg = packageResult.rows[0]
+
+    // 验证套餐数据完整性
+    if (!pkg.name || !pkg.credits || !pkg.price || pkg.price <= 0) {
+      console.error(`❌ 套餐数据不完整: ${JSON.stringify(pkg)}`)
+      return NextResponse.json({ success: false, message: '套餐数据异常' }, { status: 400 })
+    }
+
+    console.log(`📦 创建订单 - 套餐: ${pkg.name}, 积分: ${pkg.credits}, 价格: ${pkg.price}元`)
 
     const client = await pool.connect()
     
@@ -80,15 +89,14 @@ export async function POST(req: NextRequest) {
         
         await client.query(
           `INSERT INTO credit_orders (
-            id, order_number, user_id, package_id, package_name, 
+            id, order_number, user_id, package_id, 
             credits, amount, payment_method, status, created_at, expires_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW() + INTERVAL '30 minutes')`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW() + INTERVAL '30 minutes')`,
           [
             dbOrderId,
             orderId,
             userId,
             pkg.id,
-            pkg.name,
             pkg.credits,
             pkg.price,
             'ALIPAY',
@@ -113,6 +121,20 @@ export async function POST(req: NextRequest) {
           message: paymentResult.message || '创建支付失败'
         }, { status: 500 })
       }
+
+      // 记录订单创建成功日志
+      const orderLog = {
+        orderId,
+        dbOrderId,
+        userId,
+        packageId: pkg.id,
+        packageName: pkg.name,
+        credits: pkg.credits,
+        amount: pkg.price,
+        createdAt: new Date().toISOString()
+      }
+
+      console.log('✅ 订单创建成功:', JSON.stringify(orderLog, null, 2))
 
       return NextResponse.json({
         success: true,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { EmailService } from '@/lib/email'
 import { logger } from '@/lib/logger'
+import { verifyAlipaySignature, validatePaymentAmount, validateTradeStatus } from '@/lib/alipay-signature'
 
 /**
  * 支付宝异步通知回调
@@ -11,11 +12,14 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     
-    // TODO: 验证支付宝签名
-    // const isValid = verifyAlipaySignature(body)
-    // if (!isValid) {
-    //   return NextResponse.json({ success: false, message: 'Invalid signature' })
-    // }
+    console.log('📥 收到支付宝回调:', JSON.stringify(body, null, 2))
+    
+    // 1. 验证支付宝签名（必须！）
+    const isValid = verifyAlipaySignature(body)
+    if (!isValid) {
+      console.error('❌ 支付宝签名验证失败，拒绝处理')
+      return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 400 })
+    }
 
     const {
       out_trade_no, // 订单号
@@ -25,7 +29,11 @@ export async function POST(req: NextRequest) {
       buyer_id      // 买家支付宝用户ID
     } = body
 
-    if (trade_status === 'TRADE_SUCCESS' || trade_status === 'TRADE_FINISHED') {
+    // 2. 验证交易状态
+    if (!validateTradeStatus(trade_status)) {
+      console.log(`ℹ️ 交易状态不是成功状态: ${trade_status}，返回成功但不处理`)
+      return NextResponse.json({ success: true, message: 'Trade not completed' })
+    }
       // 开始数据库事务
       const client = await pool.connect()
       
@@ -45,22 +53,43 @@ export async function POST(req: NextRequest) {
 
         const order = orderResult.rows[0]
 
-        // 检查订单是否已处理
+        // 3. 验证支付金额（关键！）
+        const orderAmount = parseFloat(order.amount)
+        const paidAmount = parseFloat(total_amount)
+        
+        if (!validatePaymentAmount(orderAmount, paidAmount)) {
+          await client.query('ROLLBACK')
+          console.error(`❌ 支付金额不匹配: 订单${out_trade_no}, 订单金额${orderAmount}元, 实付${paidAmount}元`)
+          return NextResponse.json({ success: false, message: 'Amount mismatch' }, { status: 400 })
+        }
+
+        // 4. 检查订单是否已处理（幂等性）
         if (order.status === 'PAID') {
           await client.query('COMMIT')
+          console.log(`✅ 订单已处理: ${out_trade_no}`)
           return NextResponse.json({ success: true, message: 'Already processed' })
         }
 
-        // 更新订单状态
+        // 5. 更新订单状态
         await client.query(
           `UPDATE credit_orders 
            SET status = 'PAID', 
-               paid_at = NOW(), 
-               transaction_id = $1,
                updated_at = NOW()
-           WHERE order_number = $2`,
-          [trade_no, out_trade_no]
+           WHERE order_number = $1`,
+          [out_trade_no]
         )
+
+        // 记录支付宝交易号（如果字段存在）
+        try {
+          await client.query(
+            `UPDATE credit_orders 
+             SET alipay_trade_no = $1
+             WHERE order_number = $2`,
+            [trade_no, out_trade_no]
+          )
+        } catch (error) {
+          console.warn('⚠️ alipay_trade_no 字段不存在，跳过更新')
+        }
 
         // 查询套餐信息以获取有效期
         const packageResult = await client.query(
@@ -143,16 +172,23 @@ export async function POST(req: NextRequest) {
           logger.error('发送购买成功邮件失败', { error })
         })
 
-        logger.info('支付成功处理完成', {
-          context: {
-            userId: order.user_id,
-            packageName: packageInfo.name,
-            credits: order.credits,
-            expiresAt: expiresAt.toISOString()
-          }
-        })
+        // 记录详细的支付成功日志
+        const paymentLog = {
+          orderId: out_trade_no,
+          alipayTradeNo: trade_no,
+          userId: order.user_id,
+          packageName: packageInfo.name,
+          credits: order.credits,
+          amount: paidAmount,
+          expiresAt: expiresAt.toISOString(),
+          buyerId: buyer_id,
+          processedAt: new Date().toISOString()
+        }
 
-        return NextResponse.json({ success: true, message: 'Payment processed' })
+        logger.info('✅ 支付成功处理完成', { context: paymentLog })
+        console.log('✅ 支付处理成功:', JSON.stringify(paymentLog, null, 2))
+
+        return NextResponse.json({ success: true, message: 'Payment processed successfully' })
 
       } catch (error) {
         await client.query('ROLLBACK')
