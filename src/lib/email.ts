@@ -1,257 +1,587 @@
-import { Resend } from "resend"
-import { PRODUCTION_CONFIG, getEmailTemplate, getEmailConfig } from "@/config/production"
-
-// 初始化Resend客户端
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 /**
- * 发送验证码邮件
+ * QQ邮件服务模块
+ * 用于发送各类系统邮件
  */
-export async function sendVerificationEmail(email: string, code: string) {
-  const template = getEmailTemplate('verification')
-  const config = getEmailConfig()
 
-  try {
-    const result = await resend.emails.send({
-      from: config.from,
-      to: [email],
-      subject: template.subject,
-      html: generateVerificationEmailHTML(code),
-      replyTo: config.replyTo
-    })
+import nodemailer from 'nodemailer'
+import { logger } from './logger'
 
-    return { success: true, messageId: result.data?.id }
-  } catch (error) {
-    console.error("邮件发送失败:", error)
-    throw new Error("邮件发送失败")
+// 邮件配置
+const EMAIL_CONFIG = {
+  host: process.env.SMTP_HOST || 'smtp.qq.com',
+  port: parseInt(process.env.SMTP_PORT || '465'),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASSWORD || ''
   }
 }
 
-/**
- * 发送欢迎邮件
- */
-export async function sendWelcomeEmail(email: string, name: string) {
-  const template = getEmailTemplate('welcome')
-  const config = getEmailConfig()
+// 创建邮件发送器
+const transporter = nodemailer.createTransport(EMAIL_CONFIG)
 
-  try {
-    const result = await resend.emails.send({
-      from: config.from,
-      to: [email],
-      subject: template.subject,
-      html: generateWelcomeEmailHTML(name),
-      replyTo: config.replyTo
-    })
-
-    return { success: true, messageId: result.data?.id }
-  } catch (error) {
-    console.error("欢迎邮件发送失败:", error)
-    throw new Error("欢迎邮件发送失败")
-  }
-}
-
-/**
- * 发送购买确认邮件
- */
-export async function sendPurchaseConfirmationEmail(
-  email: string, 
-  orderDetails: {
-    orderId: string
-    packageName: string
-    credits: number
-    amount: number
-  }
-) {
-  const template = getEmailTemplate('purchase')
-  const config = getEmailConfig()
-
-  try {
-    const result = await resend.emails.send({
-      from: config.from,
-      to: [email],
-      subject: template.subject,
-      html: generatePurchaseEmailHTML(orderDetails),
-      replyTo: config.replyTo
-    })
-
-    return { success: true, messageId: result.data?.id }
-  } catch (error) {
-    console.error("购买确认邮件发送失败:", error)
-    throw new Error("购买确认邮件发送失败")
-  }
-}
-
-/**
- * 生成验证码邮件HTML
- */
-function generateVerificationEmailHTML(code: string): string {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${PRODUCTION_CONFIG.APP_NAME} 登录验证码</title>
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
-          <div style="width: 60px; height: 60px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-            <span style="color: white; font-size: 24px; font-weight: bold;">V</span>
+// 邮件模板
+export const EmailTemplates = {
+  // 邮箱验证码登录
+  verificationCode: (data: {
+    code: string
+  }) => ({
+    subject: '🔐 您的登录验证码',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .code-box { background: white; padding: 30px; margin: 20px 0; border-radius: 8px; text-align: center; border: 2px dashed #667eea; }
+          .code { font-size: 36px; font-weight: bold; color: #667eea; letter-spacing: 8px; font-family: 'Courier New', monospace; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+          .warning { background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 登录验证码</h1>
+            <p>VEO AI 视频生成平台</p>
           </div>
-          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">${PRODUCTION_CONFIG.APP_NAME}</h1>
-          <p style="color: rgba(255, 255, 255, 0.9); margin: 8px 0 0 0; font-size: 16px;">${PRODUCTION_CONFIG.APP_DESCRIPTION}</p>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 20px;">
-          <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">登录验证码</h2>
-          <p style="color: #666; margin: 0 0 30px 0; font-size: 16px; line-height: 1.5;">
-            您好！您正在登录${PRODUCTION_CONFIG.APP_NAME}平台，请使用以下验证码完成登录：
-          </p>
-          
-          <!-- Verification Code -->
-          <div style="background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%); padding: 30px; text-align: center; border-radius: 12px; margin: 30px 0;">
-            <div style="font-size: 36px; font-weight: bold; color: #2d3436; letter-spacing: 8px; font-family: 'Courier New', monospace;">
-              ${code}
+          <div class="content">
+            <p>您好！</p>
+            <p>您正在使用QQ邮箱登录VEO AI，您的验证码是：</p>
+            
+            <div class="code-box">
+              <div class="code">${data.code}</div>
+              <p style="color: #666; margin-top: 10px;">验证码有效期10分钟</p>
+            </div>
+
+            <div class="warning">
+              <p><strong>⚠️ 安全提示：</strong></p>
+              <ul style="margin: 5px 0; padding-left: 20px;">
+                <li>请勿将验证码告知任何人</li>
+                <li>如非本人操作，请忽略此邮件</li>
+                <li>验证码10分钟内有效</li>
+              </ul>
+            </div>
+
+            <div class="footer">
+              <p>如果您没有请求此验证码，请忽略此邮件</p>
+              <p>VEO AI - 让创意生动起来</p>
             </div>
           </div>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #ffeaa7;">
-            <p style="margin: 0; color: #666; font-size: 14px;">
-              <strong>重要提示：</strong><br>
-              • 验证码有效期为 <strong>${PRODUCTION_CONFIG.VERIFICATION_CODE.EXPIRY_MINUTES}分钟</strong><br>
-              • 请勿将验证码告诉他人<br>
-              • 如非本人操作，请忽略此邮件
-            </p>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  // 重置密码验证码
+  passwordResetCode: (data: {
+    code: string
+    userName: string
+  }) => ({
+    subject: '🔒 重置密码验证码',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .code-box { background: white; padding: 30px; margin: 20px 0; border-radius: 8px; text-align: center; border: 2px dashed #f5576c; }
+          .code { font-size: 36px; font-weight: bold; color: #f5576c; letter-spacing: 8px; font-family: 'Courier New', monospace; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+          .warning { background: #f8d7da; padding: 15px; border-radius: 5px; border-left: 4px solid #dc3545; margin: 20px 0; }
+          .info-box { background: #d1ecf1; padding: 15px; border-radius: 5px; border-left: 4px solid #0c5460; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔒 重置密码</h1>
+            <p>VEO AI 视频生成平台</p>
+          </div>
+          <div class="content">
+            <p>您好，${data.userName}！</p>
+            <p>您正在重置VEO AI账户密码，您的验证码是：</p>
+            
+            <div class="code-box">
+              <div class="code">${data.code}</div>
+              <p style="color: #666; margin-top: 10px;">验证码有效期10分钟</p>
+            </div>
+
+            <div class="info-box">
+              <p><strong>📝 重置密码步骤：</strong></p>
+              <ol style="margin: 5px 0; padding-left: 20px;">
+                <li>在重置密码页面输入此验证码</li>
+                <li>设置您的新密码（至少6个字符）</li>
+                <li>确认新密码并提交</li>
+                <li>使用新密码登录您的账户</li>
+              </ol>
+            </div>
+
+            <div class="warning">
+              <p><strong>⚠️ 重要安全提示：</strong></p>
+              <ul style="margin: 5px 0; padding-left: 20px;">
+                <li>请勿将验证码告知任何人</li>
+                <li>如果您没有请求重置密码，请立即忽略此邮件</li>
+                <li>如果您怀疑账户安全，请及时联系客服</li>
+                <li>验证码10分钟内有效，过期需重新获取</li>
+              </ul>
+            </div>
+
+            <div class="footer">
+              <p>如果您没有请求重置密码，请忽略此邮件</p>
+              <p>您的密码将保持不变</p>
+              <p style="margin-top: 10px;">VEO AI - 让创意生动起来</p>
+            </div>
           </div>
         </div>
-        
-        <!-- Footer -->
-        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
-          <p style="margin: 0; color: #999; font-size: 12px;">
-            此邮件由 ${PRODUCTION_CONFIG.APP_NAME} 自动发送，请勿回复<br>
-            如需帮助，请联系客服：${PRODUCTION_CONFIG.EMAIL.SUPPORT_EMAIL}<br>
-            ${PRODUCTION_CONFIG.LEGAL.COPYRIGHT}
-          </p>
+      </body>
+      </html>
+    `
+  }),
+
+
+  // 购买成功
+  purchaseSuccess: (data: {
+    userName: string
+    packageName: string
+    credits: number
+    expiresAt: string
+    amount: number
+  }) => ({
+    subject: `🎉 购买成功 - ${data.packageName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .info-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #667eea; }
+          .info-item { margin: 10px 0; }
+          .label { font-weight: bold; color: #667eea; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+          .btn { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 购买成功！</h1>
+            <p>感谢您购买VEO AI视频生成服务</p>
+          </div>
+          <div class="content">
+            <p>尊敬的 <strong>${data.userName}</strong>，您好！</p>
+            <p>您已成功购买 <strong>${data.packageName}</strong>，以下是您的订单详情：</p>
+            
+            <div class="info-box">
+              <div class="info-item">
+                <span class="label">套餐名称：</span>${data.packageName}
+              </div>
+              <div class="info-item">
+                <span class="label">获得积分：</span>${data.credits} 积分
+              </div>
+              <div class="info-item">
+                <span class="label">支付金额：</span>¥${data.amount.toFixed(2)}
+              </div>
+              <div class="info-item">
+                <span class="label">有效期至：</span>${data.expiresAt}
+              </div>
+            </div>
+
+            <p>💡 <strong>温馨提示：</strong></p>
+            <ul>
+              <li>每个视频消耗 15 积分</li>
+              <li>套餐到期后剩余积分将清零</li>
+              <li>我们会在到期前7天提醒您</li>
+            </ul>
+
+            <a href="${process.env.NEXTAUTH_URL}/generate" class="btn">立即开始生成视频</a>
+
+            <div class="footer">
+              <p>如有任何问题，请联系客服</p>
+              <p>VEO AI - 让创意生动起来</p>
+            </div>
+          </div>
         </div>
-      </div>
-    </body>
-    </html>
-  `
+      </body>
+      </html>
+    `
+  }),
+
+  // 积分不足提醒
+  creditLow: (data: {
+    userName: string
+    availableCredits: number
+  }) => ({
+    subject: '⚠️ 积分不足提醒',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .warning-box { background: #fff3cd; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #ffc107; }
+          .btn { display: inline-block; padding: 12px 30px; background: #f5576c; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ 积分不足提醒</h1>
+          </div>
+          <div class="content">
+            <p>尊敬的 <strong>${data.userName}</strong>，您好！</p>
+            
+            <div class="warning-box">
+              <p><strong>您的积分余额已不足：</strong></p>
+              <p style="font-size: 24px; margin: 10px 0;">剩余 <span style="color: #f5576c;">${data.availableCredits}</span> 积分</p>
+              <p>每个视频需要消耗 15 积分，当前余额不足以生成视频。</p>
+            </div>
+
+            <p>为了不影响您的使用，建议您尽快充值。</p>
+
+            <a href="${process.env.NEXTAUTH_URL}/credits" class="btn">立即充值</a>
+
+            <div class="footer">
+              <p>VEO AI - 让创意生动起来</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  // 即将过期提醒（7天前）
+  expiringSoon: (data: {
+    userName: string
+    packageName: string
+    expiresAt: string
+    daysLeft: number
+    availableCredits: number
+  }) => ({
+    subject: `⏰ 套餐即将过期提醒 - 还有${data.daysLeft}天`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .info-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #fa709a; }
+          .btn { display: inline-block; padding: 12px 30px; background: #fa709a; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⏰ 套餐即将过期</h1>
+          </div>
+          <div class="content">
+            <p>尊敬的 <strong>${data.userName}</strong>，您好！</p>
+            
+            <div class="info-box">
+              <p><strong>您的套餐即将到期：</strong></p>
+              <p style="font-size: 18px; margin: 10px 0;">
+                <span style="color: #fa709a;">${data.packageName}</span>
+              </p>
+              <p>到期时间：${data.expiresAt}</p>
+              <p>剩余天数：<span style="font-size: 24px; color: #fa709a;"><strong>${data.daysLeft}</strong></span> 天</p>
+              <p>剩余积分：${data.availableCredits} 积分</p>
+            </div>
+
+            <p>⚠️ <strong>重要提醒：</strong></p>
+            <ul>
+              <li>套餐到期后，剩余积分将被清零</li>
+              <li>建议您尽快使用或续费套餐</li>
+              <li>续费可以继续享受服务</li>
+            </ul>
+
+            <a href="${process.env.NEXTAUTH_URL}/credits" class="btn">立即续费</a>
+
+            <div class="footer">
+              <p>VEO AI - 让创意生动起来</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  // 已过期通知
+  expired: (data: {
+    userName: string
+    packageName: string
+    expiredAt: string
+  }) => ({
+    subject: '❌ 套餐已过期通知',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #868f96 0%, #596164 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .expired-box { background: #f8d7da; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #dc3545; }
+          .btn { display: inline-block; padding: 12px 30px; background: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>❌ 套餐已过期</h1>
+          </div>
+          <div class="content">
+            <p>尊敬的 <strong>${data.userName}</strong>，您好！</p>
+            
+            <div class="expired-box">
+              <p><strong>您的套餐已到期：</strong></p>
+              <p style="font-size: 18px; margin: 10px 0;">
+                ${data.packageName}
+              </p>
+              <p>过期时间：${data.expiredAt}</p>
+            </div>
+
+            <p>您的账户已被暂停，无法继续生成视频。</p>
+            <p>购买新套餐后即可恢复使用。</p>
+
+            <a href="${process.env.NEXTAUTH_URL}/credits" class="btn">立即购买</a>
+
+            <div class="footer">
+              <p>期待您的回归！</p>
+              <p>VEO AI - 让创意生动起来</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  // 管理员警报通知模板
+  adminAlert: (data: {
+    subject: string
+    message: string
+  }) => ({
+    subject: data.subject,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .alert-box { background: #f8d7da; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #dc3545; }
+          .message { white-space: pre-line; font-family: 'Courier New', monospace; background: white; padding: 15px; border-radius: 5px; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🚨 系统警报</h1>
+            <p>VEO AI 管理员通知</p>
+          </div>
+          <div class="content">
+            <div class="alert-box">
+              <h3>⚠️ 需要立即处理</h3>
+              <div class="message">${data.message}</div>
+            </div>
+            
+            <p><strong>处理建议：</strong></p>
+            <ul>
+              <li>立即登录速创API管理后台充值</li>
+              <li>检查API账户余额和使用情况</li>
+              <li>考虑设置余额预警通知</li>
+              <li>通知用户服务暂时不可用</li>
+            </ul>
+
+            <div class="footer">
+              <p>此邮件由系统自动发送</p>
+              <p>VEO AI - 系统监控</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  })
 }
 
-/**
- * 生成欢迎邮件HTML
- */
-function generateWelcomeEmailHTML(name: string): string {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>欢迎加入 ${PRODUCTION_CONFIG.APP_NAME}</title>
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); padding: 40px 20px; text-align: center;">
-          <div style="width: 60px; height: 60px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-            <span style="color: white; font-size: 24px; font-weight: bold;">V</span>
-          </div>
-          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">欢迎加入 ${PRODUCTION_CONFIG.APP_NAME}！</h1>
-          <p style="color: rgba(255, 255, 255, 0.9); margin: 8px 0 0 0; font-size: 16px;">开启您的AI视频创作之旅</p>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 20px;">
-          <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">您好，${name}！</h2>
-          <p style="color: #666; margin: 0 0 20px 0; font-size: 16px; line-height: 1.5;">
-            感谢您注册${PRODUCTION_CONFIG.APP_NAME}！我们已为您准备了${PRODUCTION_CONFIG.CREDITS.NEW_USER_BONUS}积分的新用户礼包，您可以立即开始体验AI视频生成功能。
-          </p>
-          
-          <div style="background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); padding: 20px; text-align: center; border-radius: 12px; margin: 20px 0;">
-            <h3 style="color: white; margin: 0 0 10px 0; font-size: 20px;">🎉 新用户礼包</h3>
-            <p style="color: white; margin: 0; font-size: 16px;">${PRODUCTION_CONFIG.CREDITS.NEW_USER_BONUS} 积分已到账</p>
-          </div>
-          
-          <p style="color: #666; margin: 20px 0; font-size: 16px; line-height: 1.5;">
-            现在您可以：<br>
-            • 生成 ${Math.floor(PRODUCTION_CONFIG.CREDITS.NEW_USER_BONUS / PRODUCTION_CONFIG.CREDITS.VIDEO_GENERATION_COST)} 个AI视频<br>
-            • 体验真实物理运动效果<br>
-            • 享受高级镜头控制功能
-          </p>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
-          <p style="margin: 0; color: #999; font-size: 12px;">
-            如需帮助，请联系客服：${PRODUCTION_CONFIG.EMAIL.SUPPORT_EMAIL}<br>
-            工作时间：${PRODUCTION_CONFIG.SUPPORT.WORK_HOURS}<br>
-            ${PRODUCTION_CONFIG.LEGAL.COPYRIGHT}
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
+// 发送邮件函数
+export async function sendEmail(params: {
+  to: string
+  subject: string
+  html: string
+}) {
+  try {
+    const info = await transporter.sendMail({
+      from: `"VEO AI" <${EMAIL_CONFIG.auth.user}>`,
+      to: params.to,
+      subject: params.subject,
+      html: params.html
+    })
+
+    logger.info('邮件发送成功', {
+      context: {
+        to: params.to,
+        subject: params.subject,
+        messageId: info.messageId
+      }
+    })
+
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    logger.error('邮件发送失败', {
+      error: error instanceof Error ? error : new Error(String(error)),
+      context: {
+        to: params.to,
+        subject: params.subject
+      }
+    })
+
+    return { success: false, error: String(error) }
+  }
 }
 
-/**
- * 生成购买确认邮件HTML
- */
-function generatePurchaseEmailHTML(orderDetails: any): string {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${PRODUCTION_CONFIG.APP_NAME} 购买确认</title>
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%); padding: 40px 20px; text-align: center;">
-          <div style="width: 60px; height: 60px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-            <span style="color: white; font-size: 24px; font-weight: bold;">V</span>
-          </div>
-          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">购买成功！</h1>
-          <p style="color: rgba(255, 255, 255, 0.9); margin: 8px 0 0 0; font-size: 16px;">感谢您的购买</p>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 20px;">
-          <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px; font-weight: 600;">订单详情</h2>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 0 0 10px 0; color: #666;"><strong>订单号：</strong>${orderDetails.orderId}</p>
-            <p style="margin: 0 0 10px 0; color: #666;"><strong>套餐：</strong>${orderDetails.packageName}</p>
-            <p style="margin: 0 0 10px 0; color: #666;"><strong>积分：</strong>${orderDetails.credits} 积分</p>
-            <p style="margin: 0; color: #666;"><strong>金额：</strong>¥${orderDetails.amount}</p>
-          </div>
-          
-          <div style="background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%); padding: 20px; text-align: center; border-radius: 12px; margin: 20px 0;">
-            <h3 style="color: white; margin: 0 0 10px 0; font-size: 20px;">✨ 积分已到账</h3>
-            <p style="color: white; margin: 0; font-size: 16px;">${orderDetails.credits} 积分已添加到您的账户</p>
-          </div>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
-          <p style="margin: 0; color: #999; font-size: 12px;">
-            如需帮助，请联系客服：${PRODUCTION_CONFIG.EMAIL.SUPPORT_EMAIL}<br>
-            ${PRODUCTION_CONFIG.PAYMENT.REFUND_POLICY_DAYS}天内支持退款<br>
-            ${PRODUCTION_CONFIG.LEGAL.COPYRIGHT}
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
+// 发送验证码邮件（兼容旧代码）
+export async function sendVerificationEmail(email: string, code: string) {
+  const template = EmailTemplates.verificationCode({ code })
+  return sendEmail({
+    to: email,
+    subject: template.subject,
+    html: template.html
+  })
 }
 
+// 便捷发送方法
+export const EmailService = {
+  // 发送验证码
+  sendVerificationCode: async (email: string, code: string) => {
+    return sendVerificationEmail(email, code)
+  },
+
+  // 发送重置密码验证码
+  sendPasswordResetCode: async (params: {
+    to: string
+    code: string
+    userName: string
+  }) => {
+    const template = EmailTemplates.passwordResetCode({
+      code: params.code,
+      userName: params.userName
+    })
+    return sendEmail({
+      to: params.to,
+      subject: template.subject,
+      html: template.html
+    })
+  },
 
 
+  // 发送购买成功邮件
+  sendPurchaseSuccess: async (params: {
+    email: string
+    userName: string
+    packageName: string
+    credits: number
+    expiresAt: string
+    amount: number
+  }) => {
+    const template = EmailTemplates.purchaseSuccess(params)
+    return sendEmail({
+      to: params.email,
+      subject: template.subject,
+      html: template.html
+    })
+  },
+
+  // 发送积分不足提醒
+  sendCreditLow: async (params: {
+    email: string
+    userName: string
+    availableCredits: number
+  }) => {
+    const template = EmailTemplates.creditLow(params)
+    return sendEmail({
+      to: params.email,
+      subject: template.subject,
+      html: template.html
+    })
+  },
+
+  // 发送即将过期提醒
+  sendExpiringSoon: async (params: {
+    email: string
+    userName: string
+    packageName: string
+    expiresAt: string
+    daysLeft: number
+    availableCredits: number
+  }) => {
+    const template = EmailTemplates.expiringSoon(params)
+    return sendEmail({
+      to: params.email,
+      subject: template.subject,
+      html: template.html
+    })
+  },
+
+  // 发送已过期通知
+  sendExpired: async (params: {
+    email: string
+    userName: string
+    packageName: string
+    expiredAt: string
+  }) => {
+    const template = EmailTemplates.expired(params)
+    return sendEmail({
+      to: params.email,
+      subject: template.subject,
+      html: template.html
+    })
+  },
+
+  // 发送管理员警报通知
+  sendAdminAlert: async (params: {
+    subject: string
+    message: string
+    adminEmail: string
+  }) => {
+    const template = EmailTemplates.adminAlert(params)
+    return sendEmail({
+      to: params.adminEmail,
+      subject: template.subject,
+      html: template.html
+    })
+  }
+}

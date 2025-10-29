@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
-import pool from "@/lib/db"
+import { pool } from "@/lib/db"
 import { sendVerificationEmail } from "@/lib/email"
-import { PRODUCTION_CONFIG } from "@/config/production"
+import { logger } from "@/lib/logger"
 
 export async function POST(request: Request) {
   const client = await pool.connect()
   
   try {
     const { email } = await request.json()
+    
+    logger.info('收到发送验证码请求', { email })
 
     if (!email) {
       return NextResponse.json(
@@ -25,24 +27,41 @@ export async function POST(request: Request) {
       )
     }
 
-    // 检查用户是否存在
-    const userResult = await client.query(
+    // 检查用户是否存在，如果不存在则自动创建
+    let userResult = await client.query(
       'SELECT id, email FROM users WHERE email = $1',
       [email]
     )
 
     if (userResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: "该邮箱尚未注册" },
-        { status: 404 }
+      // 自动注册新用户
+      const newUserResult = await client.query(
+        `INSERT INTO users (email, name, created_at, updated_at)
+         VALUES ($1, $2, NOW(), NOW())
+         RETURNING id, email`,
+        [email, email.split('@')[0]]  // 使用邮箱前缀作为默认用户名
       )
+      
+      const newUser = newUserResult.rows[0]
+      
+      // 给新用户初始化积分账户
+      await client.query(
+        `INSERT INTO user_credit_accounts (user_id, available_credits, total_credits, used_credits, frozen_credits, created_at, updated_at)
+         VALUES ($1, 0, 0, 0, 0, NOW(), NOW())`,
+        [newUser.id]
+      )
+      
+      console.log(`✅ 新用户自动注册: ${email}`)
+      userResult = newUserResult
     }
 
     // 生成6位数字验证码
     const code = Math.floor(100000 + Math.random() * 900000).toString()
     
-    // 验证码有效期（从配置获取）
-    const expiresAt = new Date(Date.now() + PRODUCTION_CONFIG.VERIFICATION_CODE.EXPIRY_MINUTES * 60 * 1000)
+    // 验证码有效期5分钟
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
+    
+    logger.info('生成验证码', { email, code, expiresAt })
 
     // 清除该邮箱之前未使用的验证码
     await client.query(
@@ -59,23 +78,31 @@ export async function POST(request: Request) {
 
     // 发送验证码邮件
     try {
-      await sendVerificationEmail(email, code)
+      logger.info('开始发送邮件', { email, code })
+      const result = await sendVerificationEmail(email, code)
+      
+      logger.info('邮件发送结果', { email, result })
       
       return NextResponse.json({
         success: true,
         message: "验证码已发送到您的邮箱，请查收"
       })
     } catch (emailError) {
-      console.error("❌ 邮件发送失败:", emailError)
+      logger.error("邮件发送失败", { 
+        error: emailError instanceof Error ? emailError : new Error(String(emailError)),
+        email 
+      })
       return NextResponse.json(
-        { error: "验证码发送失败，请检查邮箱地址或稍后重试" },
+        { success: false, error: "验证码发送失败，请检查邮箱地址或稍后重试" },
         { status: 500 }
       )
     }
   } catch (error) {
-    console.error("发送验证码失败:", error)
+    logger.error("发送验证码失败", { 
+      error: error instanceof Error ? error : new Error(String(error))
+    })
     return NextResponse.json(
-      { error: "服务器内部错误" },
+      { success: false, error: "服务器内部错误" },
       { status: 500 }
     )
   } finally {

@@ -6,7 +6,7 @@ import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AnimatedBackground } from "@/components/ui/animated-background"
-import { AnimatedCounter } from "@/components/ui/animated-counter"
+import { HydrationProvider } from "@/components/providers/hydration-provider"
 import { 
   CreditCard, 
   Zap, 
@@ -73,10 +73,10 @@ export default function CreditsPage() {
         const statsData = await statsResponse.json()
         if (statsData.success) {
           setCreditStats({
-            available: statsData.credits.available,
-            used: statsData.credits.used,
-            total: statsData.credits.total,
-            frozen: statsData.credits.frozen,
+            available: statsData.credits.available || 0,
+            used: statsData.credits.used || 0,
+            total: statsData.credits.total || 0,
+            frozen: statsData.credits.frozen || 0,
             expiresAt: null
           })
         }
@@ -132,10 +132,13 @@ export default function CreditsPage() {
     return gradients[index % gradients.length]
   }
 
-  // 处理购买积分
+  // 处理购买积分 - 支付宝支付
   const handlePurchase = async (packageId: string) => {
     try {
-      const response = await fetch('/api/credits/purchase', {
+      setLoading(true)
+      
+      // 创建支付宝订单
+      const response = await fetch('/api/payment/alipay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageId })
@@ -144,22 +147,72 @@ export default function CreditsPage() {
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          alert(`成功购买积分！订单号：${data.orderId}`)
-          // 刷新积分数据
-          fetchCreditsData()
+          // 打开支付宝支付页面
+          if (data.paymentUrl) {
+            window.open(data.paymentUrl, '_blank')
+          } else if (data.qrCode) {
+            // 显示二维码支付
+            showQRCodeModal(data.qrCode, data.orderId)
+          }
+          
+          // 开始轮询订单状态
+          pollPaymentStatus(data.orderId)
+        } else {
+          alert(data.message || '创建订单失败，请稍后重试')
         }
       } else {
-        alert('购买失败，请稍后重试')
+        alert('创建订单失败，请稍后重试')
       }
     } catch (error) {
       console.error('购买失败:', error)
       alert('购买失败，请稍后重试')
+    } finally {
+      setLoading(false)
     }
   }
 
+  // 轮询支付状态
+  const pollPaymentStatus = async (orderId: string) => {
+    const maxAttempts = 30 // 最多轮询30次（5分钟）
+    let attempts = 0
+
+    const interval = setInterval(async () => {
+      attempts++
+      
+      try {
+        const response = await fetch(`/api/payment/alipay/check-status?orderId=${orderId}`)
+        if (response.ok) {
+          const data = await response.json()
+          
+          if (data.status === 'PAID') {
+            clearInterval(interval)
+            alert('支付成功！积分已到账')
+            fetchCreditsData() // 刷新积分数据
+          } else if (data.status === 'FAILED' || data.status === 'CANCELLED') {
+            clearInterval(interval)
+            alert('支付失败或已取消')
+          }
+        }
+      } catch (error) {
+        console.error('查询支付状态失败:', error)
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval)
+      }
+    }, 10000) // 每10秒查询一次
+  }
+
+  // 显示二维码支付弹窗
+  const showQRCodeModal = (qrCode: string, orderId: string) => {
+    // TODO: 实现二维码弹窗
+    alert(`请使用支付宝扫描二维码支付\n订单号：${orderId}`)
+  }
+
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-      <AnimatedBackground />
+    <HydrationProvider>
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+        <AnimatedBackground />
 
       <div className="relative container mx-auto px-4 py-8">
         {/* 页面头部 */}
@@ -198,7 +251,7 @@ export default function CreditsPage() {
                     <CreditCard className="w-8 h-8 text-white" />
                   </div>
                   <div className="text-3xl font-bold">
-                    <AnimatedCounter value={creditStats?.available || 0} />
+                    <span className="tabular-nums">{creditStats?.available || 0}</span>
                   </div>
                   <p className="text-white/60">可用积分</p>
                 </div>
@@ -208,7 +261,7 @@ export default function CreditsPage() {
                     <History className="w-8 h-8 text-white" />
                   </div>
                   <div className="text-3xl font-bold">
-                    <AnimatedCounter value={creditStats?.used || 0} />
+                    <span className="tabular-nums">{creditStats?.used || 0}</span>
                   </div>
                   <p className="text-white/60">已使用积分</p>
                 </div>
@@ -218,7 +271,7 @@ export default function CreditsPage() {
                     <TrendingUp className="w-8 h-8 text-white" />
                   </div>
                   <div className="text-3xl font-bold">
-                    <AnimatedCounter value={creditStats?.total || 0} />
+                    <span className="tabular-nums">{creditStats?.total || 0}</span>
                   </div>
                   <p className="text-white/60">总计积分</p>
                 </div>
@@ -228,7 +281,7 @@ export default function CreditsPage() {
                     <Clock className="w-8 h-8 text-white" />
                   </div>
                   <div className="text-3xl font-bold">
-                    <AnimatedCounter value={creditStats?.frozen || 0} />
+                    <span className="tabular-nums">{creditStats?.frozen || 0}</span>
                   </div>
                   <p className="text-white/60">冻结积分</p>
                 </div>
@@ -253,8 +306,20 @@ export default function CreditsPage() {
             {creditPackages.length > 0 ? (
               creditPackages.filter(pkg => pkg.isActive && pkg.price > 0).map((pkg, index) => {
                 const gradient = getGradientClass(index)
-                const features = Array.isArray(pkg.features) ? pkg.features : 
-                  (typeof pkg.features === 'string' ? JSON.parse(pkg.features) : [])
+                // 安全处理 features 字段
+                let features: string[] = []
+                try {
+                  if (Array.isArray(pkg.features)) {
+                    features = pkg.features
+                  } else if (typeof pkg.features === 'string') {
+                    features = JSON.parse(pkg.features)
+                  } else if (pkg.features && typeof pkg.features === 'object') {
+                    features = Object.values(pkg.features)
+                  }
+                } catch (error) {
+                  console.error('解析features失败:', error)
+                  features = []
+                }
                 
                 return (
                   <motion.div
@@ -298,9 +363,11 @@ export default function CreditsPage() {
                           </p>
                         </div>
                         
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/30 rounded-lg">
-                          <Award className="w-4 h-4 text-yellow-400" />
-                          <span className="text-yellow-300 font-medium">{pkg.credits} 积分</span>
+                        <div className="space-y-2">
+                          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/30 rounded-lg">
+                            <Award className="w-4 h-4 text-yellow-400" />
+                            <span className="text-yellow-300 font-medium">{pkg.credits} 积分</span>
+                          </div>
                         </div>
                       </CardHeader>
 
@@ -319,14 +386,24 @@ export default function CreditsPage() {
                           onClick={() => handlePurchase(pkg.id)}
                           className={`w-full ${pkg.isPopular ? 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold' : 'bg-white/10 hover:bg-white/20 border border-white/20'}`}
                           size="lg"
+                          disabled={loading}
                         >
-                          {pkg.isPopular ? (
+                          {loading ? (
+                            <>
+                              <motion.div
+                                className="w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-2"
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                              />
+                              处理中...
+                            </>
+                          ) : pkg.isPopular ? (
                             <>
                               <Star className="w-4 h-4 mr-2" />
-                              开始使用
+                              支付宝支付
                             </>
                           ) : (
-                            '开始使用'
+                            '支付宝支付'
                           )}
                         </Button>
                       </CardContent>
@@ -412,6 +489,7 @@ export default function CreditsPage() {
         </motion.div>
       </div>
     </div>
+    </HydrationProvider>
   )
 }
 

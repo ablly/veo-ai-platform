@@ -19,6 +19,8 @@
 - ✨ **实时更新** - 头像上传后无需刷新即可更新全站显示
 - 🎬 **视频直接预览** - 鼠标悬停自动播放，沉浸式体验
 - 🎨 **现代化UI** - 毛玻璃效果 + 渐变按钮 + 流畅动画
+- 💎 **速创API集成** - 高性价比VEO3视频生成服务（¥1.1/次）
+- 📊 **成本统计** - 实时监控API成本、收入和利润
 
 ## 🚀 快速开始
 
@@ -43,10 +45,33 @@ npm install
 
 3. **配置环境变量**
 
-复制环境变量模板：
+创建`.env.local`文件：
 ```bash
-cp env-template.txt .env
+# 速创API配置（必需）
+SUCHUANG_API_KEY=your_api_key_here
+SUCHUANG_API_URL=https://api.wuyinkeji.com
+VEO_COST_PER_VIDEO=1.1
+
+# 数据库配置
+DATABASE_URL=your_supabase_url
+
+# NextAuth配置
+NEXTAUTH_SECRET=your_secret
+NEXTAUTH_URL=http://localhost:3000
+
+# 支付宝配置
+ALIPAY_APP_ID=your_alipay_app_id
+ALIPAY_PRIVATE_KEY=your_alipay_private_key
+# ... 其他配置
 ```
+
+**获取速创API密钥**:
+1. 访问 https://api.wuyinkeji.com
+2. 注册并登录控制台
+3. 在"密钥管理"页面申请API密钥
+4. 充值测试金额（建议¥100-200）
+
+详细配置说明请参考 `环境变量配置说明.md`
 
 编辑 `.env` 文件，填入必需配置：
 ```env
@@ -61,8 +86,9 @@ SUPABASE_SERVICE_KEY="your-service-role-key"
 NEXTAUTH_SECRET="your-random-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
 
-# VEO API（必需）
-VEO_API_KEY="your-veo-api-key"
+# VEO 3 API（必需 - 用于真实视频生成）
+VEO_API_URL="https://api.veo3api.ai/api/v1"
+VEO_API_KEY="veo_your_actual_api_key_here"
 
 # 其他服务（可选）
 RESEND_API_KEY="your-resend-key"  # 邮件服务
@@ -82,8 +108,8 @@ npm run dev
 ### 核心文档
 - [项目完成总结.md](项目完成总结.md) - **项目总览和功能清单**
 - [快速部署指南.md](快速部署指南.md) - **三种部署方案详解**
-- [测试清单.md](测试清单.md) - **完整功能测试指南**
-- [环境变量配置说明.md](环境变量配置说明.md) - **环境配置详解**
+- [VEO_API集成指南.md](VEO_API集成指南.md) - **⭐ VEO 3 API集成教程**
+- [环境变量配置.md](环境变量配置.md) - **环境配置详解**
 
 ### 详细文档（`文档/` 目录）
 - [快速开始.md](文档/快速开始.md) - 快速配置指南

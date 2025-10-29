@@ -67,11 +67,11 @@ export default function GeneratePage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "生成失败")
+        throw new Error(data.message || data.error || "生成失败")
       }
 
       // 轮询检查生成状态
-      const taskId = data.taskId
+      const taskId = data.taskId || data.data?.taskId
       const pollStatus = async (): Promise<void> => {
         const statusResponse = await fetch(`/api/generate/video?taskId=${taskId}`)
         const statusData = await statusResponse.json()

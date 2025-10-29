@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import pool from "@/lib/db"
+import { pool } from "@/lib/db"
 
 export async function GET(request: Request) {
   const client = await pool.connect()
@@ -59,6 +59,7 @@ export async function GET(request: Request) {
     client.release()
   }
 }
+
 
 
 

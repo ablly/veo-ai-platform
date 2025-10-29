@@ -14,9 +14,9 @@ import { Eye, EyeOff, Mail, Lock, ArrowLeft, Zap, Phone } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [code, setCode] = useState("")
-  const [phone, setPhone] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSendingCode, setIsSendingCode] = useState(false)
@@ -80,14 +80,14 @@ export default function LoginPage() {
   }
 
   // 发送手机验证码
-  const handleSendSMSCode = async () => {
+  const handleSendPhoneCode = async () => {
     if (!phone) {
-      setError("请先输入手机号")
+      setError("请先输入手机号码")
       return
     }
 
     if (!/^1[3-9]\d{9}$/.test(phone)) {
-      setError("请输入正确的手机号格式")
+      setError("请输入正确的手机号码")
       return
     }
 
@@ -95,7 +95,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const response = await fetch('/api/auth/send-sms-code', {
+      const response = await fetch('/api/auth/send-phone-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone })
@@ -107,18 +107,19 @@ export default function LoginPage() {
         setSuccessMessage(data.message)
         setCountdown(60) // 60秒倒计时
         if (data.devCode) {
-          console.log("🔑 开发环境短信验证码:", data.devCode)
+          console.log("🔑 开发环境手机验证码:", data.devCode)
         }
       } else {
         setError(data.error || "发送验证码失败")
       }
     } catch (error) {
-      console.error("发送短信验证码错误:", error)
+      console.error("发送手机验证码错误:", error)
       setError("发送验证码失败，请稍后重试")
     } finally {
       setIsSendingCode(false)
     }
   }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -168,7 +169,7 @@ export default function LoginPage() {
           setError("邮箱或密码错误")
         } else if (loginMode === 'email-code') {
           setError("邮箱验证码无效或已过期")
-        } else {
+        } else if (loginMode === 'phone-code') {
           setError("手机验证码无效或已过期")
         }
       } else {
@@ -185,6 +186,7 @@ export default function LoginPage() {
       setIsLoading(false)
     }
   }
+
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
@@ -242,18 +244,18 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setLoginMode('password')}
-                  className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
                     loginMode === 'password'
                       ? 'bg-yellow-400 text-black'
                       : 'text-white/70 hover:text-white'
                   }`}
                 >
-                  密码登录
+                  账户登录
                 </button>
                 <button
                   type="button"
                   onClick={() => setLoginMode('email-code')}
-                  className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
                     loginMode === 'email-code'
                       ? 'bg-yellow-400 text-black'
                       : 'text-white/70 hover:text-white'
@@ -264,7 +266,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setLoginMode('phone-code')}
-                  className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all ${
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
                     loginMode === 'phone-code'
                       ? 'bg-yellow-400 text-black'
                       : 'text-white/70 hover:text-white'
@@ -275,8 +277,25 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* 邮箱输入框 - 密码登录和邮箱验证码登录时显示 */}
-                {(loginMode === 'password' || loginMode === 'email-code') && (
+                {/* 邮箱/手机号输入框 */}
+                {loginMode === 'phone-code' ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-white">手机号码</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                        className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
+                        placeholder="输入您的手机号码"
+                        maxLength={11}
+                        required
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-white">邮箱地址</Label>
                     <div className="relative">
@@ -288,26 +307,6 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
                         placeholder="输入您的邮箱"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* 手机号输入框 - 手机验证码登录时显示 */}
-                {loginMode === 'phone-code' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-white">手机号</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                        className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                        placeholder="输入手机号"
-                        maxLength={11}
                         required
                       />
                     </div>
@@ -355,13 +354,8 @@ export default function LoginPage() {
                       </div>
                       <Button
                         type="button"
-                        onClick={loginMode === 'email-code' ? handleSendEmailCode : handleSendSMSCode}
-                        disabled={
-                          isSendingCode || 
-                          countdown > 0 || 
-                          (loginMode === 'email-code' && !email) ||
-                          (loginMode === 'phone-code' && (!phone || phone.length !== 11))
-                        }
+                        onClick={loginMode === 'email-code' ? handleSendEmailCode : handleSendPhoneCode}
+                        disabled={isSendingCode || countdown > 0 || (loginMode === 'email-code' ? !email : !phone)}
                         className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 whitespace-nowrap"
                       >
                         {isSendingCode ? "发送中..." : countdown > 0 ? `${countdown}s` : "获取验证码"}
@@ -394,47 +388,29 @@ export default function LoginPage() {
                     />
                   ) : (
                     loginMode === 'password' ? "登录" : 
-                    loginMode === 'email-code' ? "邮箱验证登录" : 
-                    "手机验证登录"
+                    loginMode === 'email-code' ? "邮箱验证码登录" : "手机验证码登录"
                   )}
                 </Button>
               </form>
 
-              <div className="text-center space-y-4">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/20" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-transparent text-white/70">或者</span>
-                  </div>
+              {/* 忘记密码 */}
+              {loginMode === 'password' && (
+                <div className="text-center">
+                  <Link href="/forgot-password" className="text-sm text-red-400 hover:text-red-300">
+                    忘记密码?
+                  </Link>
                 </div>
+              )}
 
-                <div className="grid grid-cols-1 gap-3">
-                  <Button
-                    variant="outline"
-                    className="w-full border-green-500/30 bg-green-500/10 backdrop-blur-sm text-white hover:bg-green-500/20 hover:border-green-500/40"
-                    onClick={() => signIn("wechat")}
-                  >
-                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 6.131-1.98-.322-3.74-4.053-6.196-8.874-6.196z"/>
-                      <path d="M17.31 11.19c-3.573 0-6.425 2.5-6.425 5.6 0 3.1 2.852 5.6 6.425 5.6a7.68 7.68 0 0 0 2.028-.267 1.028 1.028 0 0 1 .581.055l1.352.815a.192.192 0 0 0 .192 0 .177.177 0 0 0 .177-.172 1.285 1.285 0 0 0-.028-.133l-.273-1.027a.372.372 0 0 1 .135-.42c1.296-.954 2.09-2.38 2.09-3.951 0-3.1-2.851-5.6-6.425-5.6z"/>
-                    </svg>
-                    微信登录
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    className="w-full border-white/30 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 hover:border-white/40"
-                    onClick={() => signIn("email")}
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    使用邮箱验证码登录
-                  </Button>
+              <div className="text-center space-y-4">
+                <div className="text-center">
+                  <p className="text-white/60 text-sm">
+                    💡 提示：支持QQ邮箱、Gmail、163邮箱等所有邮箱类型，以及中国大陆手机号码
+                  </p>
                 </div>
 
                 <p className="text-white/70">
-                  还没有账户？{" "}
+                  还没有账号？{" "}
                   <Link href="/register" className="text-yellow-400 hover:text-yellow-300 font-medium">
                     立即注册
                   </Link>

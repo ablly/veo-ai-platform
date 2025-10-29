@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
@@ -10,8 +11,13 @@ import { motion, AnimatePresence } from "framer-motion"
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { data: session, status } = useSession()
   const userMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // 点击外部区域关闭下拉菜单
   useEffect(() => {
@@ -31,13 +37,19 @@ export function Navigation() {
   }, [userMenuOpen])
 
   return (
-    <nav className="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+    <nav className="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-50" suppressHydrationWarning={true}>
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
-              <span className="text-black font-bold text-xl">V</span>
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center">
+              <Image 
+                src="/icon.png" 
+                alt="VEO AI" 
+                width={40} 
+                height={40}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <span className="font-bold text-xl text-white">VEO AI</span>
@@ -67,7 +79,7 @@ export function Navigation() {
 
           {/* Auth Section */}
           <div className="hidden md:flex items-center space-x-4">
-            {status === "loading" ? (
+            {!mounted || status === "loading" ? (
               <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
             ) : session ? (
               <div className="relative" ref={userMenuRef}>

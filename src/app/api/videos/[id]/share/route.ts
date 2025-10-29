@@ -30,7 +30,7 @@ export async function POST(
     const userId = session.user.id
     const { id } = await params
 
-    logger.apiRequest("POST", `/api/videos/${id}/share`, { userId, videoId: id })
+    logger.info("POST", `/api/videos/${id}/share`, { userId, videoId: id })
 
     // 检查视频是否存在且属于当前用户
     const videoResult = await client.query(
@@ -87,7 +87,7 @@ export async function POST(
     )
 
     logger.userAction(userId, "Video shared to gallery", { videoId: id })
-    logger.apiResponse("POST", `/api/videos/${id}/share`, 200)
+    logger.info("POST", `/api/videos/${id}/share`, 200)
 
     return NextResponse.json({
       success: true,
@@ -95,11 +95,12 @@ export async function POST(
     })
 
   } catch (error) {
-    logger.apiResponse("POST", "/api/videos/[id]/share", 500)
+    logger.info("POST", "/api/videos/[id]/share", 500)
     return createErrorResponse(error)
   } finally {
     client.release()
   }
 }
+
 
 

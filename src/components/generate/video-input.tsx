@@ -28,9 +28,9 @@ export function VideoInput({
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [loadingCredits, setLoadingCredits] = useState(true)
 
-  // 计算所需积分
-  const baseCredits = 10
-  const imageCredits = images.length * 2
+  // 计算所需积分（新规则：15积分=1视频）
+  const baseCredits = 15
+  const imageCredits = images.length * 5
   const totalCredits = baseCredits + imageCredits
 
   // 获取用户积分余额
@@ -175,19 +175,6 @@ export function VideoInput({
                 <span className="text-gray-500">获取失败</span>
               )}
             </div>
-          </div>
-
-          {/* 消费说明 */}
-          <div className="flex items-center space-x-2 text-sm text-blue-700">
-            <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">i</span>
-            </div>
-            <span>
-              本次生成将消耗 <span className="font-bold">{totalCredits} 积分</span>
-              {images.length > 0 && (
-                <span>（基础 {baseCredits} + 图像 {imageCredits}）</span>
-              )}
-            </span>
           </div>
 
           {/* 积分不足提示 */}

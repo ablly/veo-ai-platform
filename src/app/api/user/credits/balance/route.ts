@@ -39,6 +39,9 @@ export async function GET(request: NextRequest) {
       available: user.available_credits || 0,
       total_earned: user.total_credits || 0,
       total_used: user.used_credits || 0,
+      total: user.total_credits || 0,
+      used: user.used_credits || 0,
+      frozen: 0, // 添加frozen字段以兼容前端
       last_updated: user.updated_at
     }
 

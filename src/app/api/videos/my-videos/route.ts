@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status")
     const offset = (page - 1) * limit
 
-    logger.apiRequest("GET", "/api/videos/my-videos", { userId, page, limit, status })
+    logger.info("GET", "/api/videos/my-videos", { userId, page, limit, status })
 
     // 构建查询条件
     let whereClause = "WHERE user_id = $1"
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
       referenceImages: row.reference_images,
     }))
 
-    logger.apiResponse("GET", "/api/videos/my-videos", 200)
+    logger.info("GET", "/api/videos/my-videos", 200)
 
     return NextResponse.json({
       success: true,
@@ -92,11 +92,12 @@ export async function GET(req: NextRequest) {
     })
 
   } catch (error) {
-    logger.apiResponse("GET", "/api/videos/my-videos", 500)
+    logger.info("GET", "/api/videos/my-videos", 500)
     return createErrorResponse(error)
   } finally {
     client.release()
   }
 }
+
 
 

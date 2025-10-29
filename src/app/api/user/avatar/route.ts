@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id
-    logger.apiRequest("POST", "/api/user/avatar", { userId })
+    logger.info("POST", "/api/user/avatar", { userId })
 
     // 2. 获取上传的文件
     const formData = await req.formData()
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       fileSize: file.size,
       url: uploadResult.url,
     })
-    logger.apiResponse("POST", "/api/user/avatar", 200)
+    logger.info("POST", "/api/user/avatar", 200)
 
     return NextResponse.json({
       success: true,
@@ -127,11 +127,12 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    logger.apiResponse("POST", "/api/user/avatar", 500)
+    logger.info("POST", "/api/user/avatar", 500)
     return createErrorResponse(error)
   } finally {
     client.release()
   }
 }
+
 
 

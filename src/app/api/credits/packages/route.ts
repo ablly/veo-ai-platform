@@ -28,7 +28,12 @@ export async function GET() {
       credits: row.credits,
       price: parseFloat(row.price),
       originalPrice: parseFloat(row.original_price),
-      features: row.features,
+      // 确保 features 是数组
+      features: Array.isArray(row.features) 
+        ? row.features 
+        : (typeof row.features === 'string' 
+          ? JSON.parse(row.features) 
+          : []),
       isPopular: row.is_popular,
       isActive: row.is_active
     }))

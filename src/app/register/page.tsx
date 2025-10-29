@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+// import { signIn } from "next-auth/react" // 移除微信注册
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import Link from "next/link"
@@ -16,9 +16,9 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
-    phone: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -59,8 +59,8 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          password: formData.password,
           phone: formData.phone,
+          password: formData.password,
         }),
       })
 
@@ -196,16 +196,18 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-white">手机号（可选）</Label>
+                  <Label htmlFor="phone" className="text-white">手机号码</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
                     <Input
                       id="phone"
                       type="tel"
                       value={formData.phone}
-                      onChange={handleInputChange("phone")}
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
                       className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                      placeholder="输入您的手机号"
+                      placeholder="输入您的手机号码"
+                      maxLength={11}
+                      required
                     />
                   </div>
                 </div>
@@ -284,24 +286,24 @@ export default function RegisterPage() {
                 </Button>
               </form>
 
-              <div className="text-center">
+              <div className="text-center space-y-4">
                 <p className="text-white/70">
-                  已有账户？{" "}
+                  已有账号？{" "}
                   <Link href="/login" className="text-yellow-400 hover:text-yellow-300 font-medium">
                     立即登录
                   </Link>
                 </p>
-              </div>
 
-              <div className="text-xs text-white/50 text-center">
-                注册即表示您同意我们的{" "}
-                <a href="#" className="text-yellow-400 hover:underline">
-                  服务条款
-                </a>{" "}
-                和{" "}
-                <a href="#" className="text-yellow-400 hover:underline">
-                  隐私政策
-                </a>
+                <div className="text-xs text-white/50 text-center">
+                  注册即表示您同意我们的{" "}
+                  <Link href="/terms" className="text-yellow-400 hover:underline">
+                    服务条款
+                  </Link>{" "}
+                  和{" "}
+                  <Link href="/privacy" className="text-yellow-400 hover:underline">
+                    隐私政策
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>

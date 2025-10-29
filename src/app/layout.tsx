@@ -22,6 +22,13 @@ export const metadata: Metadata = {
   keywords: ["AI视频", "视频生成", "VEO", "人工智能", "创作平台"],
   authors: [{ name: "VEO AI Team" }],
   viewport: "width=device-width, initial-scale=1",
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' }
+    ],
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({
@@ -33,6 +40,7 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning={true}
       >
         <ToastProvider>
           <AuthProvider>

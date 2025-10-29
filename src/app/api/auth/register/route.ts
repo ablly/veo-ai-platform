@@ -14,8 +14,8 @@ const pool = new Pool({
 const registerSchema = z.object({
   name: z.string().min(2, "姓名至少需要2个字符"),
   email: z.string().email("请输入有效的邮箱地址"),
+  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号码"),
   password: z.string().min(6, "密码至少需要6个字符"),
-  phone: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     console.log("📝 接收到的数据:", { ...body, password: "***" })
     
-    const { name, email, password, phone } = registerSchema.parse(body)
+    const { name, email, phone, password } = registerSchema.parse(body)
     
     // 尝试连接数据库
     console.log("🔗 正在连接到Supabase数据库...")
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     await client.query('BEGIN')
     
     try {
-      // 1. 检查邮箱是否已存在
+      // 1. 检查邮箱和手机号是否已存在
       const checkEmail = await client.query(
         'SELECT id FROM users WHERE email = $1',
         [email]
@@ -53,21 +53,18 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       }
+
+      const checkPhone = await client.query(
+        'SELECT id FROM users WHERE phone = $1',
+        [phone]
+      )
       
-      // 2. 检查手机号是否已存在（如果提供了手机号）
-      if (phone && phone.trim() !== '') {
-        const checkPhone = await client.query(
-          'SELECT id FROM users WHERE phone = $1',
-          [phone]
+      if (checkPhone.rows.length > 0) {
+        await client.query('ROLLBACK')
+        return NextResponse.json(
+          { error: "该手机号已被注册" },
+          { status: 400 }
         )
-        
-        if (checkPhone.rows.length > 0) {
-          await client.query('ROLLBACK')
-          return NextResponse.json(
-            { error: "该手机号已被注册，请使用其他手机号或留空" },
-            { status: 400 }
-          )
-        }
       }
       
       // 2. 加密密码
@@ -75,12 +72,11 @@ export async function POST(req: NextRequest) {
       console.log("🔐 密码加密完成")
       
       // 3. 创建用户
-      // 如果手机号已存在，则不使用手机号（因为手机号字段有唯一约束）
       const createUserResult = await client.query(
-        `INSERT INTO users (email, name, phone, password, created_at, updated_at) 
+        `INSERT INTO users (email, phone, name, password, created_at, updated_at) 
          VALUES ($1, $2, $3, $4, NOW(), NOW()) 
-         RETURNING id, email, name, phone, created_at`,
-        [email, name, phone && phone.trim() !== '' ? phone : null, hashedPassword]
+         RETURNING id, email, phone, name, created_at`,
+        [email, phone, name, hashedPassword]
       )
       
       const newUser = createUserResult.rows[0]
@@ -113,8 +109,7 @@ export async function POST(req: NextRequest) {
           id: newUser.id,
           name: newUser.name,
           email: newUser.email,
-          phone: newUser.phone,
-          credits: 10,
+          credits: bonusCredits,
           createdAt: newUser.created_at
         }
       })

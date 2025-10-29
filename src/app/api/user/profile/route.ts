@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import pool from "@/lib/db"
+import { pool } from "@/lib/db"
 import { createErrorResponse, Errors } from "@/lib/error-handler"
 import { logger } from "@/lib/logger"
 
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = session.user.id
-    logger.apiRequest("GET", "/api/user/profile", { userId })
+    const startTime = Date.now()
 
     // 获取用户信息
     const userResult = await client.query(
@@ -56,9 +56,7 @@ export async function GET(req: NextRequest) {
       used_credits: 0,
     }
 
-    logger.apiResponse("GET", "/api/user/profile", 200)
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         id: user.id,
@@ -76,8 +74,25 @@ export async function GET(req: NextRequest) {
       },
     })
 
+    logger.apiCall({
+      method: "GET",
+      url: "/api/user/profile",
+      status: 200,
+      duration: Date.now() - startTime,
+      userId
+    })
+
+    return response
+
   } catch (error) {
-    logger.apiResponse("GET", "/api/user/profile", 500)
+    logger.apiCall({
+      method: "GET",
+      url: "/api/user/profile", 
+      status: 500,
+      duration: Date.now() - startTime,
+      userId: session?.user?.id,
+      error: error instanceof Error ? error : new Error(String(error))
+    })
     return createErrorResponse(error)
   } finally {
     client.release()
@@ -100,8 +115,7 @@ export async function PUT(req: NextRequest) {
 
     const userId = session.user.id
     const { name, phone } = await req.json()
-
-    logger.apiRequest("PUT", "/api/user/profile", { userId, name, phone })
+    const startTime = Date.now()
 
     // 验证输入
     if (name && name.trim().length === 0) {
@@ -141,21 +155,42 @@ export async function PUT(req: NextRequest) {
 
     const updatedUser = updateResult.rows[0]
 
-    logger.userAction(userId, "Profile updated", { name, phone })
-    logger.apiResponse("PUT", "/api/user/profile", 200)
+    logger.businessEvent({
+      event: "Profile updated",
+      userId,
+      data: { name, phone }
+    })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: updatedUser,
       message: "个人资料已更新",
     })
 
+    logger.apiCall({
+      method: "PUT",
+      url: "/api/user/profile",
+      status: 200,
+      duration: Date.now() - startTime,
+      userId
+    })
+
+    return response
+
   } catch (error) {
-    logger.apiResponse("PUT", "/api/user/profile", 500)
+    logger.apiCall({
+      method: "PUT",
+      url: "/api/user/profile",
+      status: 500,
+      duration: Date.now() - startTime,
+      userId: session?.user?.id,
+      error: error instanceof Error ? error : new Error(String(error))
+    })
     return createErrorResponse(error)
   } finally {
     client.release()
   }
 }
+
 
 

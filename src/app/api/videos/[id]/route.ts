@@ -30,7 +30,7 @@ export async function DELETE(
     const userId = session.user.id
     const { id } = await params
 
-    logger.apiRequest("DELETE", `/api/videos/${id}`, { userId, videoId: id })
+    logger.info("DELETE", `/api/videos/${id}`, { userId, videoId: id })
 
     // 检查视频是否存在且属于当前用户
     const videoCheck = await client.query(
@@ -53,7 +53,7 @@ export async function DELETE(
     )
 
     logger.userAction(userId, "Video deleted", { videoId: id })
-    logger.apiResponse("DELETE", `/api/videos/${id}`, 200)
+    logger.info("DELETE", `/api/videos/${id}`, 200)
 
     return NextResponse.json({
       success: true,
@@ -61,11 +61,12 @@ export async function DELETE(
     })
 
   } catch (error) {
-    logger.apiResponse("DELETE", "/api/videos/[id]", 500)
+    logger.info("DELETE", "/api/videos/[id]", 500)
     return createErrorResponse(error)
   } finally {
     client.release()
   }
 }
+
 
 

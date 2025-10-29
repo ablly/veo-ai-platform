@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AnimatedBackground } from "@/components/ui/animated-background"
@@ -87,11 +88,11 @@ export default function HomePage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || "生成失败")
+        throw new Error(data.message || data.error || "生成失败")
       }
 
       // 轮询检查生成状态
-      const taskId = data.data.taskId
+      const taskId = data.taskId || data.data?.taskId
       const pollStatus = async (): Promise<void> => {
         const statusResponse = await fetch(`/api/generate/video?taskId=${taskId}`)
         const statusData = await statusResponse.json()
@@ -119,7 +120,23 @@ export default function HomePage() {
 
     } catch (error) {
       console.error("生成失败:", error)
-      alert(error instanceof Error ? error.message : "生成失败，请稍后重试")
+      
+      let errorMessage = "生成失败，请稍后重试"
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        // 特殊错误处理
+        if (error.message.includes("余额不足")) {
+          errorMessage = "⚠️ 服务暂时不可用\n\nAPI服务商账户余额不足，管理员正在处理中。\n请稍后重试或联系客服。"
+        } else if (error.message.includes("积分不足")) {
+          errorMessage = "💳 积分不足\n\n" + error.message + "\n\n点击确定前往充值页面"
+          // 可以在这里添加跳转到充值页面的逻辑
+        } else if (error.message.includes("过期")) {
+          errorMessage = "⏰ 套餐已过期\n\n" + error.message + "\n\n请续费后继续使用"
+        }
+      }
+      
+      alert(errorMessage)
       setGenerationData(prev => ({ ...prev, isGenerating: false }))
     }
   }
@@ -258,11 +275,6 @@ export default function HomePage() {
                   <span className="text-white/50">
                     {generationData.prompt.length}/500 字符
                   </span>
-                  {session && (
-                    <span className="text-yellow-400 font-medium">
-                      消耗 5 积分
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -692,7 +704,7 @@ export default function HomePage() {
             {[
               {
                 q: "VEO AI 如何工作？",
-                a: "VEO AI 使用先进的AI模型将您的文字描述和参考图片转化为高质量视频。只需输入描述，可选上传参考图片，AI将在30-60秒内生成视频，每次消耗5积分。"
+                a: "VEO AI 使用先进的AI模型将您的文字描述和参考图片转化为高质量视频。只需输入描述，可选上传参考图片，AI将在30-60秒内生成视频，每次消耗15积分。"
               },
               {
                 q: "可以上传什么类型的图片？",
@@ -700,7 +712,7 @@ export default function HomePage() {
               },
               {
                 q: "积分如何收费？",
-                a: "每次生成视频消耗5积分。新用户注册即送10积分（可生成2个视频）。您可以通过灵活的套餐购买更多积分：基础套餐¥49/50积分，专业套餐¥149/200积分，企业套餐¥599/1000积分。"
+                a: "每次生成视频消耗15积分。新用户注册即送10积分。您可以通过灵活的套餐购买更多积分：基础套餐¥49/50积分，专业套餐¥99/150积分，企业套餐¥299/500积分。"
               },
               {
                 q: "如果对生成的视频不满意怎么办？",
@@ -809,7 +821,7 @@ export default function HomePage() {
             <Button 
               size="lg" 
               variant="outline" 
-              className="border-2 border-white/50 text-white hover:bg-white/20 hover:border-white/70 backdrop-blur-sm px-12 py-6 text-xl font-bold shadow-xl"
+              className="bg-white text-purple-900 hover:bg-white/90 border-2 border-white px-12 py-6 text-xl font-bold shadow-xl transition-all"
             >
               查看定价方案
             </Button>
@@ -871,10 +883,10 @@ export default function HomePage() {
             </div>
             
             <div className="flex items-center space-x-8 text-white/70">
-              <a href="#" className="hover:text-white transition-colors">隐私政策</a>
-              <a href="#" className="hover:text-white transition-colors">服务条款</a>
+              <Link href="/privacy" className="hover:text-white transition-colors">隐私政策</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">服务条款</Link>
               <a href="#" className="hover:text-white transition-colors">帮助中心</a>
-              <a href="#" className="hover:text-white transition-colors">联系我们</a>
+              <Link href="/contact" className="hover:text-white transition-colors">联系我们</Link>
             </div>
           </motion.div>
           
@@ -885,7 +897,19 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <p>&copy; 2025 VEO AI视频平台. 保留所有权利. | 基于最新VEO 3.1模型技术</p>
+            <div className="space-y-2">
+              <p>&copy; 2025 VEO AI视频平台. 保留所有权利. | 基于最新VEO 3.1模型技术</p>
+              <p>
+                <a 
+                  href="https://beian.miit.gov.cn" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  蜀ICP备2025135924号
+                </a>
+              </p>
+            </div>
           </motion.div>
         </div>
       </footer>

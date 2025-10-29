@@ -88,7 +88,7 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
       <AnimatePresence mode="popLayout">
-        {toasts.map((toast) => (
+        {toasts.length > 0 && toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
         ))}
       </AnimatePresence>
@@ -163,5 +163,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     </motion.div>
   )
 }
+
+
 
 

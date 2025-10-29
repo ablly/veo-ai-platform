@@ -1,0 +1,74 @@
+# ==========================================
+# VEO AI Platform - 生产环境配置示例
+# EdgeOne Pages部署配置
+# ==========================================
+
+# ==========================================
+# 数据库配置 (Supabase)
+# ==========================================
+DATABASE_URL=postgresql://postgres:your-password@db.xxx.supabase.co:5432/postgres
+
+# ==========================================
+# NextAuth认证配置
+# ==========================================
+NEXTAUTH_URL=https://veo-ai.site
+NEXTAUTH_SECRET=your-random-secret-key-minimum-32-characters-long
+
+# 生成NEXTAUTH_SECRET命令 (在本地终端运行):
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# ==========================================
+# 速创API配置
+# ==========================================
+SUCHUANG_API_URL=https://api.wuyinkeji.com
+SUCHUANG_API_KEY=your-suchuang-api-key-here
+VEO_COST_PER_VIDEO=1.1
+
+# ==========================================
+# 邮件服务配置 (QQ邮箱SMTP)
+# ==========================================
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=3533912007@qq.com
+SMTP_PASSWORD=your-qq-email-authorization-code
+
+# QQ邮箱授权码获取方式:
+# 1. 登录QQ邮箱
+# 2. 设置 -> 账户 -> POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务
+# 3. 开启"POP3/SMTP服务"
+# 4. 生成授权码
+
+# ==========================================
+# 支付宝支付配置 (申请后填写)
+# ==========================================
+# ALIPAY_APP_ID=your-alipay-app-id
+# ALIPAY_PRIVATE_KEY=your-alipay-private-key
+# ALIPAY_PUBLIC_KEY=alipay-public-key
+# ALIPAY_GATEWAY=https://openapi.alipay.com/gateway.do
+
+# ==========================================
+# 微信登录配置 (申请后填写)
+# ==========================================
+# WECHAT_CLIENT_ID=your-wechat-app-id
+# WECHAT_CLIENT_SECRET=your-wechat-app-secret
+
+# ==========================================
+# 系统配置
+# ==========================================
+NODE_ENV=production
+NEXT_PUBLIC_APP_URL=https://veo-ai.site
+
+# ==========================================
+# 可选配置
+# ==========================================
+# LOG_LEVEL=info
+# MAX_FILE_SIZE=5242880
+# RATE_LIMIT_MAX=100
+
+
+
+
+
+
+
