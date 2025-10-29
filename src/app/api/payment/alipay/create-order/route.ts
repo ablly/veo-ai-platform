@@ -239,10 +239,25 @@ async function createAlipayPayment(params: {
       .map(key => `${key}=${(commonParams as any)[key]}`)
       .join('&')
 
+    // 格式化私钥为正确的 PEM 格式
+    let formattedPrivateKey = ALIPAY_PRIVATE_KEY.trim()
+    
+    if (!formattedPrivateKey.includes('-----BEGIN')) {
+      // 移除所有换行符和空格，然后按64字符分行
+      const cleanKey = formattedPrivateKey.replace(/\s/g, '')
+      const keyLines = []
+      for (let i = 0; i < cleanKey.length; i += 64) {
+        keyLines.push(cleanKey.slice(i, i + 64))
+      }
+      formattedPrivateKey = `-----BEGIN PRIVATE KEY-----\n${keyLines.join('\n')}\n-----END PRIVATE KEY-----`
+    }
+
+    console.log('🔑 私钥格式化完成，长度:', formattedPrivateKey.length)
+
     const sign = crypto
       .createSign('RSA-SHA256')
       .update(signString)
-      .sign(ALIPAY_PRIVATE_KEY, 'base64')
+      .sign(formattedPrivateKey, 'base64')
 
     // 构建支付URL
     const paymentParams = new URLSearchParams({
