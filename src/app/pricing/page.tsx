@@ -51,19 +51,20 @@ export default function PricingPage() {
     }
 
     try {
-      const response = await fetch('/api/credits/purchase', {
+      // 调用支付宝支付接口
+      const response = await fetch('/api/payment/alipay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packageId })
       })
 
       const data = await response.json()
-      if (data.success) {
-        alert('购买成功！积分已到账')
-        // 可以跳转到积分页面或刷新当前页面
-        router.push('/credits')
+      
+      if (data.success && data.paymentUrl) {
+        // 跳转到支付宝收银台
+        window.location.href = data.paymentUrl
       } else {
-        alert(data.error || '购买失败')
+        alert(data.message || '创建订单失败，请稍后重试')
       }
     } catch (error) {
       console.error('购买失败:', error)
