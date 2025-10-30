@@ -100,10 +100,11 @@ export async function POST(req: NextRequest) {
         
         const packageInfo = packageResult.rows[0]
         
-        // 计算过期时间（基础30天、专业90天、企业365天）
+        // 计算过期时间（新手7天、基础30天、专业90天、企业180天）
         let validityDays = 30 // 默认30天
+        if (packageInfo.name.includes('新手')) validityDays = 7
         if (packageInfo.name.includes('专业')) validityDays = 90
-        if (packageInfo.name.includes('企业')) validityDays = 365
+        if (packageInfo.name.includes('企业')) validityDays = 180
         
         const expiresAt = new Date()
         expiresAt.setDate(expiresAt.getDate() + validityDays)
