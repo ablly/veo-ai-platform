@@ -85,7 +85,7 @@ export default function ProfilePage() {
     if (!file) return
 
     // 验证文件
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       showError("文件过大", "头像大小不能超过2MB")
       return
     }

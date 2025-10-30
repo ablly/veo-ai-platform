@@ -911,6 +911,7 @@ export default function HomePage() {
             viewport={{ once: true }}
           >
             <button
+              onClick={handleStartCreating}
               className="btn-primary-fixed btn-gradient-yellow inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-bold px-12 py-6 text-xl group shadow-xl border-0 transition-all hover:shadow-2xl h-auto"
             >
               <Zap className="w-6 h-6 mr-3 group-hover:animate-pulse" />
@@ -918,6 +919,7 @@ export default function HomePage() {
               <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
             </button>
             <Button 
+              onClick={() => router.push('/pricing')}
               size="lg" 
               variant="outline" 
               className="bg-white text-purple-900 hover:bg-white/90 border-2 border-white px-12 py-6 text-xl font-bold shadow-xl transition-all"
