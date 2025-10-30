@@ -265,11 +265,7 @@ export default function PricingPage() {
             {[
               {
                 question: "积分有有效期吗？",
-                answer: "积分购买后30天内有效，请及时使用。"
-              },
-              {
-                question: "可以退款吗？",
-                answer: "支持7天内无理由退款，未使用的积分可全额退还。"
+                answer: "积分有效期按照购买的积分套餐的规定时间计算，请及时使用。"
               },
               {
                 question: "生成的视频有版权吗？",
@@ -277,7 +273,11 @@ export default function PricingPage() {
               },
               {
                 question: "支持哪些支付方式？",
-                answer: "支持支付宝、微信支付、银联等多种支付方式。"
+                answer: "目前仅支持支付宝支付。"
+              },
+              {
+                question: "可以退款吗？",
+                answer: "虚拟产品一经售出概不退换。"
               }
             ].map((faq, index) => (
               <motion.div
