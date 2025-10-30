@@ -238,3 +238,4 @@ SELECT user_id, available_credits FROM user_credit_accounts;
 **文档创建时间：** 2025-10-29  
 **最后验证时间：** 2025-10-29  
 **修复状态：** ✅ 完全解决
+

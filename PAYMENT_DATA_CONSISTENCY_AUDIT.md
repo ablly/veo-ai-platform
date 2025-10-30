@@ -336,3 +336,4 @@ const validateOrder = async (userId: string, packageId: string, amount: number) 
 **文档创建时间：** 2025-10-29  
 **最后更新时间：** 2025-10-29  
 **状态：** 🚨 需要立即修复
+

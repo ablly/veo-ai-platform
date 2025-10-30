@@ -54,7 +54,7 @@ export function Navigation() {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 group-hover:w-full transition-all duration-300"></span>
             </Link>
             <Link href="/pricing" className="text-white/80 hover:text-white transition-colors relative group">
-              套餐定价
+              套餐充值
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 group-hover:w-full transition-all duration-300"></span>
             </Link>
             <Link href="/gallery" className="text-white/80 hover:text-white transition-colors relative group">
@@ -183,7 +183,7 @@ export function Navigation() {
                 视频生成
               </Link>
               <Link href="/pricing" className="text-white/80 hover:text-white transition-colors px-2 py-1">
-                套餐定价
+                套餐充值
               </Link>
               <Link href="/gallery" className="text-white/80 hover:text-white transition-colors px-2 py-1">
                 作品展示

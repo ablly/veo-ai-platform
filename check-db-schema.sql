@@ -116,3 +116,4 @@ GROUP BY (amount IS NULL);
 RAISE NOTICE '🎯 数据库字段检查完成！';
 RAISE NOTICE '📋 请检查上面的输出，确保所有必需字段都存在';
 RAISE NOTICE '⚠️  如果有任何字段缺失，脚本已自动添加';
+

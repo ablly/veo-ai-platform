@@ -47,3 +47,4 @@ COMMENT ON COLUMN phone_verification_codes.used IS '是否已使用';
 
 COMMENT ON COLUMN users.phone IS '用户手机号码';
 
+

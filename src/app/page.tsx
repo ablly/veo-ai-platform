@@ -189,6 +189,26 @@ export default function HomePage() {
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <AnimatedBackground />
       
+      {/* 电脑端优先提示区域 */}
+      <section className="relative container mx-auto px-4 pt-6 pb-2">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-2xl mx-auto"
+        >
+          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-3">
+            <div className="flex items-center justify-center space-x-3">
+              <span className="text-lg">💻</span>
+              <p className="text-sm text-white/90">
+                <span className="font-semibold text-yellow-400">建议使用电脑端访问</span>
+                <span className="text-white/70 ml-2 hidden sm:inline">以获得最佳体验</span>
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
       {/* Hero Section */}
       <section className="relative container mx-auto px-4 py-20">
         <FloatingElements />
