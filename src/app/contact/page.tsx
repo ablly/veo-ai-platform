@@ -145,6 +145,7 @@ export default function ContactPage() {
                       height={200}
                       className="rounded-lg"
                       priority
+                      unoptimized={true}
                     />
                   </div>
                   <p className="text-sm text-gray-600 text-center">
