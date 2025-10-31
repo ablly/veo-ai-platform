@@ -139,7 +139,7 @@ export default function ContactPage() {
                   </p>
                   <div className="bg-white p-4 rounded-xl shadow-lg mb-4">
                     <Image
-                      src="/images/thumbnails/wechat-qrcode.png"
+                      src="/images/thumbnails/wechat-qrcode.jpg"
                       alt="微信二维码"
                       width={200}
                       height={200}
@@ -296,6 +296,16 @@ export default function ContactPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
