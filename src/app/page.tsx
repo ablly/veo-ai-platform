@@ -193,7 +193,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <AnimatedBackground />
-      {!isMobile && <ParticleBackground showConnections={false} />}
+      {!isMobile && <ParticleBackground />}
       
       {/* 电脑端优先提示区域 */}
       <section className="relative container mx-auto px-4 pt-6 pb-2">

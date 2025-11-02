@@ -11,24 +11,24 @@ interface ThreeDTextHeroProps {
 export function ThreeDTextHero({ children, className = '' }: ThreeDTextHeroProps) {
   const { normalizedX, normalizedY } = useMousePosition()
 
-  // 视差移动量（轻微跟随鼠标）
-  const xOffset = normalizedX * 10
-  const yOffset = normalizedY * 10
+  // 视差移动量（明显跟随鼠标）
+  const xOffset = normalizedX * 25
+  const yOffset = normalizedY * 25
 
   return (
     <motion.div
       className={`relative ${className}`}
       style={{
-        perspective: '1000px',
+        perspective: '800px', // 更近的透视，3D效果更明显
       }}
       animate={{
-        rotateX: normalizedY * 5,
-        rotateY: normalizedX * 5,
+        rotateX: normalizedY * 15, // 增加3倍倾斜角度
+        rotateY: normalizedX * 15,
       }}
       transition={{
         type: 'spring',
-        stiffness: 150,
-        damping: 20,
+        stiffness: 100,
+        damping: 15,
       }}
     >
       {/* 主文字 */}
@@ -44,14 +44,14 @@ export function ThreeDTextHero({ children, className = '' }: ThreeDTextHeroProps
           damping: 15,
         }}
       >
-        <div className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 font-bold text-6xl md:text-7xl lg:text-8xl leading-tight drop-shadow-[0_0_30px_rgba(139,92,246,0.5)]">
+        <div className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 font-bold text-6xl md:text-7xl lg:text-8xl leading-tight drop-shadow-[0_0_50px_rgba(139,92,246,1)] filter drop-shadow-[0_0_80px_rgba(236,72,153,0.8)]">
           {children}
         </div>
       </motion.div>
 
       {/* 发光层1 */}
       <motion.div
-        className="absolute inset-0 blur-2xl opacity-60"
+        className="absolute inset-0 blur-3xl opacity-80"
         animate={{
           x: xOffset * 0.5,
           y: yOffset * 0.5,
@@ -69,7 +69,7 @@ export function ThreeDTextHero({ children, className = '' }: ThreeDTextHeroProps
 
       {/* 发光层2 */}
       <motion.div
-        className="absolute inset-0 blur-3xl opacity-40"
+        className="absolute inset-0 blur-[100px] opacity-70"
         animate={{
           x: xOffset * 0.3,
           y: yOffset * 0.3,
