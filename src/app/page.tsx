@@ -101,7 +101,7 @@ export default function HomePage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || "生成失败")
+        throw new Error(data.error?.message || data.message || "生成失败")
       }
 
       // 轮询检查生成状态
