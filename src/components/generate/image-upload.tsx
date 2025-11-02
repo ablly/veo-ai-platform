@@ -96,7 +96,7 @@ export function ImageUpload({
       {/* Upload Area */}
       <motion.div
         className={`
-          relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200
+          relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 overflow-hidden
           ${dragOver 
             ? "border-yellow-400 bg-yellow-50" 
             : "border-yellow-300 bg-yellow-50/50 hover:border-yellow-400 hover:bg-yellow-50"
@@ -106,8 +106,9 @@ export function ImageUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={openFileDialog}
-        whileHover={{ scale: 1.01 }}
+        whileHover={{ scale: 1.01, rotateX: 2, rotateY: 2 }}
         whileTap={{ scale: 0.99 }}
+        style={{ perspective: '1000px' }}
       >
         <input
           ref={fileInputRef}
@@ -133,13 +134,40 @@ export function ImageUpload({
           </div>
           
           {dragOver && (
-            <motion.div
-              className="absolute inset-0 bg-yellow-200/30 rounded-xl flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <p className="text-yellow-700 font-medium">松开鼠标上传图片</p>
-            </motion.div>
+            <>
+              <motion.div
+                className="absolute inset-0 bg-yellow-200/30 rounded-xl flex items-center justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <p className="text-yellow-700 font-medium text-xl">📸 松开鼠标上传图片</p>
+              </motion.div>
+              
+              {/* 拖拽时的粒子效果 */}
+              {Array.from({ length: 20 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
+                  initial={{
+                    x: '50%',
+                    y: '50%',
+                    opacity: 0,
+                  }}
+                  animate={{
+                    x: `${50 + (Math.random() - 0.5) * 100}%`,
+                    y: `${50 + (Math.random() - 0.5) * 100}%`,
+                    opacity: [0, 1, 0],
+                    scale: [0, 1.5, 0],
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    delay: i * 0.1,
+                    ease: "easeOut",
+                  }}
+                />
+              ))}
+            </>
           )}
         </div>
       </motion.div>

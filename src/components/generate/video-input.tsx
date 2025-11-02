@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ImageUpload } from "./image-upload"
+import { MagicTextarea } from "@/components/ui/magic-textarea"
 import { motion } from "framer-motion"
 import { Zap, Type, Image as ImageIcon, Coins } from "lucide-react"
 
@@ -75,14 +76,14 @@ export function VideoInput({
         </div>
         
         <div className="relative">
-          <textarea
+          <MagicTextarea
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder="例如：一只坐在彩虹上的可爱小猫，卡通风格，色彩鲜艳，温馨治愈的氛围..."
             className="w-full h-32 p-4 border-2 border-yellow-200 rounded-xl resize-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 transition-all duration-200 bg-white/50 text-gray-900 placeholder-gray-500"
             maxLength={maxLength}
           />
-          <div className="absolute bottom-3 right-3 text-sm text-gray-500">
+          <div className="absolute bottom-3 right-3 text-sm text-gray-500 pointer-events-none z-10">
             <span className={remainingChars < 50 ? "text-orange-500 font-medium" : ""}>
               {remainingChars}
             </span>

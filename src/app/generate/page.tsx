@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { AnimatedBackground } from "@/components/ui/animated-background"
 import { VideoInput } from "@/components/generate/video-input"
+import { ThreeDLoader } from "@/components/ui/3d-loader"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Sparkles, LogIn, UserPlus, Download, Play, Loader2 } from "lucide-react"
+import { Sparkles, LogIn, UserPlus, Download, Play } from "lucide-react"
 
 interface GenerationData {
   prompt: string
@@ -28,11 +29,22 @@ export default function GeneratePage() {
     images: [],
     isGenerating: false
   })
+  const [generationProgress, setGenerationProgress] = useState(0)
+  const progressIntervalRef = useRef<NodeJS.Timeout>()
 
   const handleGenerate = async () => {
     if (!generationData.prompt.trim()) return
     
     setGenerationData(prev => ({ ...prev, isGenerating: true }))
+    setGenerationProgress(0)
+    
+    // 模拟进度（实际是基于时间估算）
+    progressIntervalRef.current = setInterval(() => {
+      setGenerationProgress(prev => {
+        if (prev >= 95) return prev // 在95%停止，等待实际完成
+        return prev + Math.random() * 5
+      })
+    }, 2000)
     
     try {
       // 上传图像（如果有）
@@ -77,15 +89,21 @@ export default function GeneratePage() {
         const statusData = await statusResponse.json()
 
         if (statusData.status === "completed" && statusData.videoUrl) {
-          setGenerationData(prev => ({
-            ...prev,
-            isGenerating: false,
-            result: {
-              videoUrl: statusData.videoUrl,
-              id: taskId,
-              createdAt: statusData.createdAt
-            }
-          }))
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current)
+          }
+          setGenerationProgress(100)
+          setTimeout(() => {
+            setGenerationData(prev => ({
+              ...prev,
+              isGenerating: false,
+              result: {
+                videoUrl: statusData.videoUrl,
+                id: taskId,
+                createdAt: statusData.createdAt
+              }
+            }))
+          }, 800) // 短暂延迟显示100%完成
         } else if (statusData.status === "failed") {
           throw new Error("视频生成失败")
         } else {
@@ -99,6 +117,11 @@ export default function GeneratePage() {
 
     } catch (error) {
       console.error("生成失败:", error)
+      
+      // 清除进度定时器
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
       
       let errorMessage = "生成失败，请稍后重试"
       if (error instanceof Error) {
@@ -116,8 +139,18 @@ export default function GeneratePage() {
       
       alert(errorMessage)
       setGenerationData(prev => ({ ...prev, isGenerating: false }))
+      setGenerationProgress(0)
     }
   }
+  
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+    }
+  }, [])
 
   // 如果正在加载认证状态，显示加载页面
   if (status === "loading") {
@@ -276,24 +309,12 @@ export default function GeneratePage() {
                     </p>
                   </div>
                 ) : generationData.isGenerating ? (
-                  // 生成中状态
-                  <div className="flex flex-col items-center justify-center h-64 text-center">
-                    <div className="relative mb-6">
-                      <div className="w-24 h-24 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                        <Loader2 className="w-12 h-12 text-white animate-spin" />
-                      </div>
-                      <div className="absolute -inset-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full opacity-20 animate-pulse"></div>
-                    </div>
-                    <h4 className="text-xl font-semibold text-gray-700 mb-2">
-                      AI正在创作中...
-                    </h4>
-                    <p className="text-gray-500 max-w-sm mb-4">
-                      请耐心等待，通常需要1-3分钟
-                    </p>
-                    <div className="w-full max-w-xs bg-gray-200 rounded-full h-2">
-                      <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-                    </div>
-                  </div>
+                  // 生成中状态 - 3D 加载动画
+                  <ThreeDLoader 
+                    progress={generationProgress} 
+                    message="AI 正在创作中..."
+                    type="dna"
+                  />
                 ) : generationData.result ? (
                   // 完成状态
                   <div className="space-y-6">
