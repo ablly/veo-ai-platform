@@ -223,12 +223,12 @@ export async function POST(request: NextRequest) {
         [user.id, videoId, 'suchuang', model, VEO_COST_PER_VIDEO]
       )
 
-      const duration = measurePerformance(startTime)
+      const executionTime = measurePerformance(startTime)
       logger.info("视频生成请求成功", {
         user_email: session.user.email,
         video_id: videoId,
         task_id: veoResponse.taskId,
-        duration
+        duration: executionTime
       })
 
       return NextResponse.json({
@@ -247,10 +247,10 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    const duration = measurePerformance(startTime)
+    const executionTime = measurePerformance(startTime)
     logger.error("视频生成失败", { 
       error: error instanceof Error ? error.message : String(error),
-      duration
+      duration: executionTime
     })
     return createErrorResponse(error instanceof Error ? error : new Error(String(error)))
   }
