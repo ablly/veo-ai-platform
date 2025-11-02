@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
 
         await client.query('COMMIT')
 
-        // 发送购买成功邮件（异步，不影响支付流程）
+        // 发送购买成功邮件给用户（异步，不影响支付流程）
         EmailService.sendPurchaseSuccess({
           email: user.email,
           userName: user.name || user.email.split('@')[0],
@@ -172,6 +172,29 @@ export async function POST(req: NextRequest) {
           amount: parseFloat(order.payment_amount)
         }).catch(error => {
           logger.error('发送购买成功邮件失败', { error })
+        })
+
+        // 发送订单通知给管理员（异步，不影响支付流程）
+        EmailService.sendAdminOrderNotification({
+          orderNumber: out_trade_no,
+          userName: user.name || user.email.split('@')[0],
+          userEmail: user.email,
+          packageName: packageInfo.name,
+          credits: packageInfo.credits,
+          amount: parseFloat(order.payment_amount),
+          buyerId: buyer_id || 'N/A',
+          alipayTradeNo: trade_no,
+          paidAt: new Date().toLocaleString('zh-CN', { 
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          })
+        }).catch(error => {
+          logger.error('发送管理员订单通知失败', { error })
         })
 
         // 记录详细的支付成功日志

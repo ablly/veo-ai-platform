@@ -10,6 +10,10 @@ import { AnimatedBackground } from "@/components/ui/animated-background"
 import { AnimatedCounter } from "@/components/ui/animated-counter"
 import { VideoShowcase } from "@/components/ui/video-showcase"
 import { FloatingElements } from "@/components/ui/floating-elements"
+import { ThreeDTextHero } from "@/components/ui/3d-text-hero"
+import { ParticleBackground } from "@/components/ui/particle-background"
+import { Card3D, Card3DHeader, Card3DTitle, Card3DDescription, Card3DContent } from "@/components/ui/card-3d"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { motion } from "framer-motion"
 import { Zap, Film, Sparkles, ArrowRight, CheckCircle, Image, Type, Download, Play } from "lucide-react"
 
@@ -27,6 +31,7 @@ interface GenerationData {
 export default function HomePage() {
   const { data: session } = useSession()
   const router = useRouter()
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const [generationData, setGenerationData] = useState<GenerationData>({
     prompt: "",
     images: [],
@@ -188,6 +193,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       <AnimatedBackground />
+      {!isMobile && <ParticleBackground showConnections={false} />}
       
       {/* 电脑端优先提示区域 */}
       <section className="relative container mx-auto px-4 pt-6 pb-2">
@@ -230,14 +236,20 @@ export default function HomePage() {
               </span>
             </motion.div>
             
-            <h1 className="text-7xl md:text-8xl font-bold mb-8 text-white leading-tight">
-              <span className="inline-block">VEO</span>{" "}
-              <span className="bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-                AI
-              </span>
-              <br />
-              <span className="text-5xl md:text-6xl">视频创作平台</span>
-            </h1>
+            {isMobile ? (
+              <h1 className="text-7xl md:text-8xl font-bold mb-8 text-white leading-tight">
+                <span className="inline-block">VEO</span>{" "}
+                <span className="bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                  AI
+                </span>
+                <br />
+                <span className="text-5xl md:text-6xl">视频创作平台</span>
+              </h1>
+            ) : (
+              <ThreeDTextHero className="mb-8">
+                VEO AI
+              </ThreeDTextHero>
+            )}
             
             <p className="text-xl text-white/80 mb-10 max-w-3xl mx-auto leading-relaxed">
               革命性的AI视频生成技术，将您的创意转化为专业级视频内容

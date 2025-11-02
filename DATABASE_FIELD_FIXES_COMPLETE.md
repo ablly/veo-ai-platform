@@ -239,3 +239,13 @@ SELECT user_id, available_credits FROM user_credit_accounts;
 **最后验证时间：** 2025-10-29  
 **修复状态：** ✅ 完全解决
 
+
+
+
+
+
+
+
+
+
+

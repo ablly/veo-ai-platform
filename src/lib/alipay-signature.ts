@@ -92,3 +92,13 @@ export function validateTradeStatus(tradeStatus: string): boolean {
   return isValid
 }
 
+
+
+
+
+
+
+
+
+
+
