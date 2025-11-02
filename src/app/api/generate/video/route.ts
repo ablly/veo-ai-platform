@@ -188,12 +188,16 @@ export async function POST(request: NextRequest) {
           [veoResponse.error, videoId]
         )
 
-        // 如果是API余额不足，发送管理员通知邮件
-        if (veoResponse.error && veoResponse.error.includes("余额不足")) {
+        // 如果是API余额不足或服务不可用，发送管理员通知邮件
+        if (veoResponse.error && (
+          veoResponse.error.includes("余额不足") || 
+          veoResponse.error.includes("服务暂时不可用") ||
+          veoResponse.error.includes("服务配置异常")
+        )) {
           import('@/lib/email').then(({ EmailService }) => {
             EmailService.sendAdminAlert({
-              subject: "🚨 紧急：API服务商账户余额不足",
-              message: `速创API账户余额不足，影响视频生成功能。请立即充值。\n\n错误详情：${veoResponse.error}\n时间：${new Date().toLocaleString('zh-CN')}`,
+              subject: "🚨 紧急：速创API服务异常",
+              message: `速创API出现异常，影响视频生成功能。请立即检查并处理。\n\n错误详情：${veoResponse.error}\n时间：${new Date().toLocaleString('zh-CN')}\n\n可能原因：\n1. API账户余额不足，需要充值\n2. API密钥过期或无效\n3. API服务暂时故障\n\n请登录速创API管理后台查看详情。`,
               adminEmail: "3533912007@qq.com"
             }).catch(err => logger.error('发送管理员通知邮件失败', { error: err }))
           })
@@ -403,13 +407,29 @@ async function callSuchuangAPI(options: {
       let errorMessage = errorData.msg || `速创API错误: ${response.status}`
       
       if (response.status === 402 || response.status === 403) {
-        errorMessage = "API服务商账户余额不足，请联系管理员充值"
+        errorMessage = "服务暂时不可用，请稍后重试或联系我们"
+        // 发送管理员紧急通知（异步，不阻塞）
+        import('@/lib/email').then(({ EmailService }) => {
+          EmailService.sendAdminAlert({
+            subject: "🚨 紧急：速创API余额不足",
+            message: `速创API返回余额不足错误（状态码：${response.status}），无法生成视频。\n\n请立即登录速创API管理后台充值。\n\n错误详情：${JSON.stringify(errorData)}\n时间：${new Date().toLocaleString('zh-CN')}`,
+            adminEmail: "3533912007@qq.com"
+          }).catch(err => logger.error('发送管理员通知失败', { error: err }))
+        })
       } else if (response.status === 401) {
-        errorMessage = "API密钥无效或已过期，请联系管理员更新"
+        errorMessage = "服务配置异常，请联系我们"
+        // 发送管理员通知
+        import('@/lib/email').then(({ EmailService }) => {
+          EmailService.sendAdminAlert({
+            subject: "🚨 紧急：速创API密钥异常",
+            message: `速创API返回认证失败错误（状态码：401），可能是API密钥过期或无效。\n\n请检查并更新API密钥配置。\n\n错误详情：${JSON.stringify(errorData)}\n时间：${new Date().toLocaleString('zh-CN')}`,
+            adminEmail: "3533912007@qq.com"
+          }).catch(err => logger.error('发送管理员通知失败', { error: err }))
+        })
       } else if (response.status === 429) {
-        errorMessage = "API调用频率过高，请稍后重试"
+        errorMessage = "请求过于频繁，请稍后重试"
       } else if (response.status >= 500) {
-        errorMessage = "API服务暂时不可用，请稍后重试"
+        errorMessage = "服务暂时不可用，请稍后重试"
       }
       
       throw new Error(errorMessage)

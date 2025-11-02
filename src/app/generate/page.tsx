@@ -105,8 +105,8 @@ export default function GeneratePage() {
         errorMessage = error.message
         
         // 特殊错误处理
-        if (error.message.includes("余额不足")) {
-          errorMessage = "⚠️ 服务暂时不可用，API服务商账户余额不足，管理员正在处理中。请稍后重试或联系客服。"
+        if (error.message.includes("余额不足") || error.message.includes("服务暂时不可用")) {
+          errorMessage = "⚠️ 服务暂时不可用，请稍后重试或联系我们。"
         } else if (error.message.includes("积分不足")) {
           errorMessage = "💳 积分不足，请充值"
         } else if (error.message.includes("过期")) {
