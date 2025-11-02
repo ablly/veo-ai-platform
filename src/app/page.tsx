@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,7 @@ import { VideoShowcase } from "@/components/ui/video-showcase"
 import { FloatingElements } from "@/components/ui/floating-elements"
 import { ThreeDTextHero } from "@/components/ui/3d-text-hero"
 import { ParticleBackground } from "@/components/ui/particle-background"
+import { ParticleProgress } from "@/components/ui/particle-progress"
 import { Card3D, Card3DHeader, Card3DTitle, Card3DDescription, Card3DContent } from "@/components/ui/card-3d"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { motion } from "framer-motion"
@@ -37,6 +38,8 @@ export default function HomePage() {
     images: [],
     isGenerating: false
   })
+  const [generationProgress, setGenerationProgress] = useState(0)
+  const progressIntervalRef = useRef<NodeJS.Timeout>()
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [loadingCredits, setLoadingCredits] = useState(true)
 
@@ -72,6 +75,15 @@ export default function HomePage() {
     }
     
     setGenerationData(prev => ({ ...prev, isGenerating: true }))
+    setGenerationProgress(0)
+    
+    // 模拟进度
+    progressIntervalRef.current = setInterval(() => {
+      setGenerationProgress(prev => {
+        if (prev >= 95) return prev
+        return prev + Math.random() * 5
+      })
+    }, 2000)
     
     try {
       // 上传图像（如果有）
@@ -116,15 +128,21 @@ export default function HomePage() {
         const statusData = await statusResponse.json()
 
         if (statusData.data.status === "completed" && statusData.data.videoUrl) {
-          setGenerationData(prev => ({
-            ...prev,
-            isGenerating: false,
-            result: {
-              videoUrl: statusData.data.videoUrl,
-              id: taskId,
-              createdAt: statusData.data.createdAt
-            }
-          }))
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current)
+          }
+          setGenerationProgress(100)
+          setTimeout(() => {
+            setGenerationData(prev => ({
+              ...prev,
+              isGenerating: false,
+              result: {
+                videoUrl: statusData.data.videoUrl,
+                id: taskId,
+                createdAt: statusData.data.createdAt
+              }
+            }))
+          }, 800)
         } else if (statusData.data.status === "failed") {
           throw new Error("视频生成失败")
         } else {
@@ -138,6 +156,11 @@ export default function HomePage() {
 
     } catch (error) {
       console.error("生成失败:", error)
+      
+      // 清除进度定时器
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
       
       let errorMessage = "生成失败，请稍后重试"
       if (error instanceof Error) {
@@ -155,8 +178,18 @@ export default function HomePage() {
       
       alert(errorMessage)
       setGenerationData(prev => ({ ...prev, isGenerating: false }))
+      setGenerationProgress(0)
     }
   }
+  
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+    }
+  }, [])
 
   // 获取用户积分余额
   useEffect(() => {
@@ -586,28 +619,52 @@ export default function HomePage() {
                     </div>
                   </motion.div>
                 ) : generationData.isGenerating ? (
-                  /* 显示生成中状态 */
+                  /* 显示生成中状态 - 粒子进度条 */
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="aspect-video bg-black/20 rounded-lg flex flex-col items-center justify-center space-y-4"
+                    className="aspect-video bg-gradient-to-br from-black/40 to-purple-900/20 rounded-lg flex flex-col items-center justify-center space-y-6 p-8"
                   >
-                    <motion.div
-                      className="w-16 h-16 border-4 border-yellow-400/30 border-t-yellow-400 rounded-full"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    />
-                    <div className="text-center">
-                      <p className="text-white font-medium mb-2">AI正在创作中...</p>
-                      <p className="text-white/60 text-sm">预计需要30-60秒</p>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                    {/* 脉冲光圈 */}
+                    <div className="relative">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-yellow-400 to-orange-500"
-                        initial={{ width: "0%" }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: 45, ease: "easeInOut" }}
+                        className="w-20 h-20 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center"
+                        animate={{
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 180, 360],
+                        }}
+                        transition={{
+                          duration: 3,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                      >
+                        <Film className="w-10 h-10 text-white" />
+                      </motion.div>
+                      <motion.div
+                        className="absolute -inset-4 rounded-full bg-gradient-to-r from-yellow-400/30 to-orange-500/30"
+                        animate={{
+                          scale: [1, 1.5, 1],
+                          opacity: [0.6, 0, 0.6],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                        }}
                       />
+                    </div>
+                    
+                    <div className="text-center space-y-2">
+                      <p className="text-white font-bold text-xl">AI 正在创作中...</p>
+                      <p className="text-white/60 text-sm">预计需要 30-60秒</p>
+                    </div>
+                    
+                    {/* 粒子进度条 */}
+                    <div className="w-full max-w-md">
+                      <ParticleProgress progress={generationProgress} height={50} />
+                      <p className="text-white/70 text-sm text-center mt-3">
+                        {Math.round(generationProgress)}% 完成
+                      </p>
                     </div>
                   </motion.div>
                 ) : (
