@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手动更新视频状态</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: linear-gradient(to right, #fbbf24, #f97316);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .info {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            color: #1e40af;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 手动更新视频状态</h1>
+        <p>点击下面的按钮来检查并更新所有PROCESSING状态的视频</p>
+        
+        <button id="updateBtn" onclick="updateVideos()">
+            立即更新视频状态
+        </button>
+        
+        <button onclick="checkStatus()">
+            查看待更新视频
+        </button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        
+        async function updateVideos() {
+            const btn = document.getElementById('updateBtn');
+            const result = document.getElementById('result');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>更新中...';
+            
+            result.style.display = 'block';
+            result.className = 'info';
+            result.innerHTML = '正在检查视频状态...';
+            
+            try {
+                // 直接调用数据库更新
+                const response = await fetch(`${API_BASE}/api/cron/update-videos`, {
+                    headers: {
+                        'Authorization': 'Bearer your-secret-key'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.className = 'success';
+                    result.innerHTML = `
+                        <h3>✅ 更新成功！</h3>
+                        <p>总共检查: ${data.total} 个视频</p>
+                        <p>✅ 完成: ${data.updated} 个</p>
+                        <p>❌ 失败: ${data.failed} 个</p>
+                        <p>⏳ 仍在处理: ${data.processing} 个</p>
+                        <p style="margin-top: 10px; font-size: 14px;">
+                            请刷新"我的视频"页面查看更新后的视频
+                        </p>
+                    `;
+                } else {
+                    throw new Error(data.error || '更新失败');
+                }
+            } catch (error) {
+                result.className = 'error';
+                result.innerHTML = `
+                    <h3>❌ 更新失败</h3>
+                    <p>${error.message}</p>
+                    <p style="margin-top: 10px; font-size: 14px;">
+                        请检查服务器日志或联系技术支持
+                    </p>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '立即更新视频状态';
+            }
+        }
+        
+        async function checkStatus() {
+            const result = document.getElementById('result');
+            
+            result.style.display = 'block';
+            result.className = 'info';
+            result.innerHTML = '正在查询...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/videos/my-videos?status=PROCESSING`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const videos = data.data.videos;
+                    
+                    if (videos.length === 0) {
+                        result.className = 'success';
+                        result.innerHTML = '<h3>✅ 没有待更新的视频</h3>';
+                    } else {
+                        result.className = 'info';
+                        result.innerHTML = `
+                            <h3>📋 待更新视频列表 (${videos.length}个)</h3>
+                            <pre>${JSON.stringify(videos.map(v => ({
+                                prompt: v.prompt.substring(0, 30) + '...',
+                                taskId: v.external_task_id || '无',
+                                createdAt: new Date(v.createdAt).toLocaleString('zh-CN')
+                            })), null, 2)}</pre>
+                        `;
+                    }
+                } else {
+                    throw new Error(data.error || '查询失败');
+                }
+            } catch (error) {
+                result.className = 'error';
+                result.innerHTML = `<h3>❌ 查询失败</h3><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

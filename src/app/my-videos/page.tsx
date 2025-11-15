@@ -48,8 +48,20 @@ export default function MyVideosPage() {
 
     if (status === "authenticated") {
       fetchVideos()
+      
+      // 如果有PROCESSING状态的视频，每10秒自动刷新一次
+      const hasProcessing = videos.some(v => v.status === "PROCESSING")
+      if (hasProcessing) {
+        console.log('🔄 检测到处理中的视频，启动自动刷新')
+        const refreshInterval = setInterval(() => {
+          console.log('🔄 自动刷新视频列表...')
+          fetchVideos()
+        }, 10000) // 每10秒刷新一次
+        
+        return () => clearInterval(refreshInterval)
+      }
     }
-  }, [status, router, currentPage, statusFilter])
+  }, [status, router, currentPage, statusFilter, videos.length])
 
   const fetchVideos = async () => {
     try {
@@ -104,34 +116,38 @@ export default function MyVideosPage() {
     }
 
     try {
+      // 使用fetch下载视频，避免CORS问题
+      const response = await fetch(video.videoUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      
       const link = document.createElement("a")
-      link.href = video.videoUrl
+      link.href = url
       link.download = `veo-video-${video.id}.mp4`
+      document.body.appendChild(link)
       link.click()
-      success("开始下载", "视频正在下载中")
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      success("下载成功", "视频已保存到本地")
     } catch (err) {
-      showError("下载失败", "无法下载视频")
-    }
-  }
-
-  const handleShare = async (videoId: string) => {
-    try {
-      const response = await fetch(`/api/videos/${videoId}/share`, {
-        method: "POST",
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        success("分享成功", "视频已分享到Gallery")
-        fetchVideos()
-      } else {
-        showError("分享失败", data.error)
+      // 如果fetch失败，尝试直接下载
+      try {
+        const link = document.createElement("a")
+        link.href = video.videoUrl
+        link.download = `veo-video-${video.id}.mp4`
+        link.target = "_blank"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        success("开始下载", "视频正在下载中")
+      } catch (err2) {
+        showError("下载失败", "无法下载视频，请尝试右键另存为")
       }
-    } catch (err) {
-      showError("分享失败", "无法分享视频")
     }
   }
+
+
 
   const filteredVideos = videos.filter((video) =>
     video.prompt.toLowerCase().includes(searchTerm.toLowerCase())
@@ -268,16 +284,63 @@ export default function MyVideosPage() {
                     <Card className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/15 transition-all overflow-hidden group">
                       <CardContent className="p-0">
                         {/* Video Preview */}
-                        <div className="relative aspect-video bg-black/30">
+                        <div className="relative aspect-video bg-black/30 overflow-hidden">
                           {video.status === "COMPLETED" && video.videoUrl ? (
                             <>
                               <video
                                 src={video.videoUrl}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover transition-transform group-hover:scale-110"
                                 poster={video.thumbnailUrl}
+                                muted
+                                loop
+                                preload="metadata"
+                                crossOrigin="anonymous"
+                                playsInline
+                                onError={(e) => {
+                                  console.error('视频加载失败:', video.videoUrl, e);
+                                }}
+                                onLoadedData={() => {
+                                  console.log('视频加载成功:', video.videoUrl);
+                                }}
+                                onMouseEnter={(e) => {
+                                  const videoEl = e.target as HTMLVideoElement;
+                                  videoEl.currentTime = 0;
+                                  videoEl.play().catch(err => console.error('播放失败:', err));
+                                }}
+                                onMouseLeave={(e) => {
+                                  const videoEl = e.target as HTMLVideoElement;
+                                  videoEl.pause();
+                                  videoEl.currentTime = 0;
+                                }}
                               />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Play className="w-12 h-12 text-white" />
+                              <div 
+                                className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                                onClick={() => {
+                                  // 打开视频播放弹窗
+                                  const modal = document.createElement('div');
+                                  modal.className = 'fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4';
+                                  modal.onclick = () => modal.remove();
+                                  
+                                  const videoContainer = document.createElement('div');
+                                  videoContainer.className = 'max-w-4xl w-full';
+                                  videoContainer.onclick = (e) => e.stopPropagation();
+                                  
+                                  const videoEl = document.createElement('video');
+                                  videoEl.src = video.videoUrl!;
+                                  videoEl.controls = true;
+                                  videoEl.autoplay = true;
+                                  videoEl.className = 'w-full rounded-lg';
+                                  videoEl.crossOrigin = 'anonymous';
+                                  videoEl.playsInline = true;
+                                  
+                                  videoContainer.appendChild(videoEl);
+                                  modal.appendChild(videoContainer);
+                                  document.body.appendChild(modal);
+                                }}
+                              >
+                                <div className="w-16 h-16 rounded-full bg-yellow-400 flex items-center justify-center transform scale-0 group-hover:scale-100 transition-transform">
+                                  <Play className="w-8 h-8 text-black ml-1" />
+                                </div>
                               </div>
                             </>
                           ) : (
@@ -326,24 +389,16 @@ export default function MyVideosPage() {
                               <Button
                                 onClick={() => handleDownload(video)}
                                 size="sm"
-                                className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black"
+                                className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-medium"
                               >
-                                <Download className="w-4 h-4 mr-1" />
-                                下载
-                              </Button>
-                              <Button
-                                onClick={() => handleShare(video.id)}
-                                size="sm"
-                                className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black"
-                              >
-                                <Share2 className="w-4 h-4 mr-1" />
-                                分享
+                                <Download className="w-4 h-4 mr-2" />
+                                下载视频
                               </Button>
                               <Button
                                 onClick={() => handleDelete(video.id)}
                                 size="sm"
                                 variant="outline"
-                                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                className="border-red-500/30 text-red-400 hover:bg-red-500/10 px-3"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>

@@ -11,8 +11,8 @@ export const API_CONFIG = {
     ENDPOINTS: {
       // VEO3视频生成接口
       GENERATE: '/api/video/veoPlus',
-      // 查询接口（待确认，可能需要单独的查询接口）
-      QUERY: '/api/video/veoPlus/query'
+      // 视频生成详情查询接口（根据官方文档）
+      QUERY: '/api/video/veoDetail'
     },
     MODELS: {
       VEO3: 'veo3',

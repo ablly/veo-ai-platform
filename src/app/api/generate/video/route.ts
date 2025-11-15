@@ -219,12 +219,12 @@ export async function POST(request: NextRequest) {
         [user.id, videoId, 'suchuang', model, VEO_COST_PER_VIDEO]
       )
 
-      const duration = measurePerformance(startTime)
+      const requestDuration = measurePerformance(startTime)
       logger.info("视频生成请求成功", {
         user_email: session.user.email,
         video_id: videoId,
         task_id: veoResponse.taskId,
-        duration
+        duration: requestDuration
       })
 
       return NextResponse.json({
@@ -243,10 +243,10 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    const duration = measurePerformance(startTime)
+    const requestDuration = measurePerformance(startTime)
     logger.error("视频生成失败", { 
       error: error instanceof Error ? error.message : String(error),
-      duration
+      duration: requestDuration
     })
     return createErrorResponse(error instanceof Error ? error : new Error(String(error)))
   }
@@ -288,7 +288,7 @@ export async function GET(request: NextRequest) {
       const veoStatus = await checkSuchuangStatus(taskId)
       
       if (veoStatus.success) {
-        if (veoStatus.status === 'completed' && veoStatus.videoUrl) {
+        if (veoStatus.status === 'COMPLETED' && veoStatus.videoUrl) {
           // 更新数据库状态
           await pool.query(
             `UPDATE video_generations 
@@ -301,11 +301,11 @@ export async function GET(request: NextRequest) {
           
           return NextResponse.json({
             success: true,
-            status: 'completed',
+            status: 'COMPLETED',  // 返回大写状态
             videoUrl: veoStatus.videoUrl,
             createdAt: video.created_at
           })
-        } else if (veoStatus.status === 'failed') {
+        } else if (veoStatus.status === 'FAILED') {
           // 更新数据库状态为失败
           await pool.query(
             `UPDATE video_generations 
@@ -317,16 +317,17 @@ export async function GET(request: NextRequest) {
           
           return NextResponse.json({
             success: false,
-            status: 'failed',
+            status: 'FAILED',  // 返回大写状态
             error: veoStatus.error || '视频生成失败'
           })
         }
       }
     }
 
+    // 返回当前状态（统一使用大写）
     return NextResponse.json({
       success: true,
-      status: video.status,
+      status: video.status,  // 数据库中已经是大写
       videoUrl: video.video_url,
       createdAt: video.created_at,
       error: video.error_message
@@ -417,19 +418,23 @@ async function callSuchuangAPI(options: {
 
     const result = await response.json()
     
-    // 速创API响应格式: { code: 200, data: { taskId: "..." }, msg: "success" }
+    // 速创API响应格式: { code: 200, data: { id: 111 }, msg: "成功" }
     if (result.code !== 200 || !result.data) {
       throw new Error(result.msg || "速创API返回数据格式错误")
     }
 
-    // 速创API返回的taskId可能在data中
-    const taskId = result.data.taskId || result.data.task_id || result.data.id || JSON.stringify(result.data)
+    // 速创API返回的是id字段（根据官方文档）
+    const taskId = result.data.id
+
+    if (!taskId) {
+      throw new Error("速创API未返回任务ID")
+    }
 
     logger.info("速创API调用成功", { taskId, videoId, response: result })
     
     return {
       success: true,
-      taskId: taskId
+      taskId: String(taskId) // 确保转换为字符串
     }
 
   } catch (error) {
@@ -451,13 +456,13 @@ async function checkSuchuangStatus(taskId: string) {
       throw new Error("速创API密钥未配置")
     }
 
-    // 注意：速创API的查询接口需要根据实际文档确认
-    // 这里假设查询接口格式，如有不同请根据实际文档调整
+    // 根据速创API官方文档：GET /api/video/veoDetail?key=你的密钥&id=1
     const response = await fetch(
-      `${SUCHUANG_API_URL}/api/video/veoPlus/query?taskId=${taskId}`,
+      `${SUCHUANG_API_URL}/api/video/veoDetail?key=${SUCHUANG_API_KEY}&id=${taskId}`,
       {
         method: 'GET',
         headers: {
+          'Content-Type': 'application/json;charset:utf-8;',
           'Authorization': SUCHUANG_API_KEY
         },
         signal: AbortSignal.timeout(10000) // 10秒超时
@@ -470,14 +475,17 @@ async function checkSuchuangStatus(taskId: string) {
 
     const result = await response.json()
     
-    // 速创API响应格式（根据通用API平台规范推测）:
+    // 速创API响应格式（根据官方文档）:
     // {
     //   code: 200,
-    //   msg: "success",
+    //   msg: "成功",
     //   data: {
-    //     status: "pending" | "processing" | "completed" | "failed",
-    //     videoUrl: "https://...",
-    //     errorMessage: "..."
+    //     id: 1352,
+    //     content: "https://openpt.tos-cn-shanghai.volces.com/veo/...",
+    //     status: 1,  // 0:排队中，1:成功，2:失败，3:生成中
+    //     fail_reason: "",
+    //     created_at: "2025-08-23 10:37:17",
+    //     updated_at: "2025-08-23 10:39:10"
     //   }
     // }
     
@@ -487,28 +495,48 @@ async function checkSuchuangStatus(taskId: string) {
 
     const data = result.data
     
-    // 根据status判断状态
-    if (data.status === 'completed' && data.videoUrl) {
+    // 记录原始响应用于调试
+    logger.info("速创API原始响应", { 
+      taskId, 
+      status: data.status, 
+      hasContent: !!data.content,
+      contentPreview: data.content ? data.content.substring(0, 80) : null
+    })
+    
+    // 根据status数字判断状态（0:排队中，1:成功，2:失败，3:生成中）
+    if (data.status === 1 && data.content) {
       // 成功生成
+      logger.info("✅ 视频生成成功，URL已获取", { 
+        taskId, 
+        videoUrl: data.content 
+      })
       return {
         success: true,
-        status: 'completed',
-        videoUrl: data.videoUrl || data.video_url || data.url,
+        status: 'COMPLETED',  // 使用大写，匹配数据库枚举
+        videoUrl: data.content,
         error: null
       }
-    } else if (data.status === 'failed') {
+    } else if (data.status === 2) {
       // 生成失败
       return {
         success: true,
-        status: 'failed',
+        status: 'FAILED',  // 使用大写，匹配数据库枚举
         videoUrl: null,
-        error: data.errorMessage || data.error_message || data.error || '视频生成失败'
+        error: data.fail_reason || '视频生成失败'
       }
-    } else {
-      // 仍在处理中（pending或processing）
+    } else if (data.status === 0 || data.status === 3) {
+      // 排队中或生成中
       return {
         success: true,
-        status: 'processing',
+        status: 'PROCESSING',  // 使用大写，匹配数据库枚举
+        videoUrl: null,
+        error: null
+      }
+    } else {
+      // 未知状态
+      return {
+        success: true,
+        status: 'PROCESSING',  // 使用大写，匹配数据库枚举
         videoUrl: null,
         error: null
       }

@@ -78,6 +78,17 @@ export async function GET(req: NextRequest) {
       referenceImages: row.reference_images,
     }))
 
+    // 调试日志：输出视频数据
+    logger.info("返回视频列表", { 
+      count: videos.length, 
+      completedCount: videos.filter(v => v.status === 'COMPLETED').length,
+      firstVideo: videos[0] ? {
+        id: videos[0].id,
+        status: videos[0].status,
+        hasVideoUrl: !!videos[0].videoUrl
+      } : null
+    })
+
     logger.info("GET", "/api/videos/my-videos", 200)
 
     return NextResponse.json({

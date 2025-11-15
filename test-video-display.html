@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .video-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        video {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        .success {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #263238;
+            color: #00ff00;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 视频播放测试工具</h1>
+        
+        <!-- 测试1: 直接从数据库URL播放 -->
+        <div class="video-section">
+            <h2>测试 1: 数据库中的视频URL</h2>
+            <video id="video1" controls crossorigin="anonymous" playsinline>
+                <source src= "https://openpt1.oss-cn-shanghai.aliyuncs.com/8bd131241f864dd9ae1e9ce7f6143cd7.mp4" type="video/mp4">
+                您的浏览器不支持视频播放。
+            </video>
+            <div class="info" id="info1">
+                <strong>视频URL:</strong> https://openpt1.oss-cn-shanghai.aliyuncs.com/8bd131241f864dd9ae1e9ce7f6143cd7.mp4<br>
+                <strong>状态:</strong> <span id="status1">等待加载...</span>
+            </div>
+        </div>
+
+        <!-- 测试2: 通过API获取视频 -->
+        <div class="video-section">
+            <h2>测试 2: 从API获取视频列表</h2>
+            <button onclick="fetchVideos()">获取我的视频</button>
+            <button onclick="testVideoUrl()">测试视频URL可访问性</button>
+            <div id="apiResult" class="info">
+                点击按钮获取视频数据...
+            </div>
+            <div id="videoContainer"></div>
+        </div>
+
+        <!-- 控制台日志 -->
+        <div class="log" id="console">
+            <strong>控制台日志:</strong><br>
+        </div>
+    </div>
+
+    <script>
+        const log = (message, type = 'info') => {
+            const consoleEl = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff5252' : type === 'success' ? '#4caf50' : '#00ff00';
+            consoleEl.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            console.log(message);
+        };
+
+        // 测试1: 监听视频加载事件
+        const video1 = document.getElementById('video1');
+        const status1 = document.getElementById('status1');
+        const info1 = document.getElementById('info1');
+
+        video1.addEventListener('loadstart', () => {
+            log('视频开始加载...');
+            status1.textContent = '加载中...';
+        });
+
+        video1.addEventListener('loadedmetadata', () => {
+            log('视频元数据加载成功', 'success');
+            status1.textContent = `✅ 元数据加载成功 (时长: ${video1.duration.toFixed(2)}秒)`;
+            info1.classList.add('success');
+        });
+
+        video1.addEventListener('loadeddata', () => {
+            log('视频数据加载成功', 'success');
+            status1.textContent = '✅ 视频加载成功，可以播放';
+        });
+
+        video1.addEventListener('canplay', () => {
+            log('视频可以播放', 'success');
+        });
+
+        video1.addEventListener('error', (e) => {
+            const error = video1.error;
+            let errorMsg = '未知错误';
+            if (error) {
+                switch(error.code) {
+                    case 1: errorMsg = 'MEDIA_ERR_ABORTED - 用户中止'; break;
+                    case 2: errorMsg = 'MEDIA_ERR_NETWORK - 网络错误'; break;
+                    case 3: errorMsg = 'MEDIA_ERR_DECODE - 解码错误'; break;
+                    case 4: errorMsg = 'MEDIA_ERR_SRC_NOT_SUPPORTED - 不支持的格式'; break;
+                }
+            }
+            log(`❌ 视频加载失败: ${errorMsg}`, 'error');
+            status1.textContent = `❌ 加载失败: ${errorMsg}`;
+            info1.classList.add('error');
+        });
+
+        // 测试2: 从API获取视频
+        async function fetchVideos() {
+            log('正在从API获取视频列表...');
+            const resultEl = document.getElementById('apiResult');
+            
+            try {
+                const response = await fetch('/api/videos/my-videos?limit=5');
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ 成功获取 ${data.data.videos.length} 个视频`, 'success');
+                    resultEl.innerHTML = `
+                        <strong>API响应:</strong><br>
+                        总数: ${data.data.total}<br>
+                        当前页: ${data.data.videos.length} 个视频<br>
+                        已完成: ${data.data.videos.filter(v => v.status === 'COMPLETED').length} 个<br><br>
+                        <strong>视频列表:</strong><br>
+                        ${data.data.videos.map((v, i) => `
+                            ${i + 1}. ${v.prompt.substring(0, 30)}...<br>
+                            &nbsp;&nbsp;&nbsp;状态: ${v.status}<br>
+                            &nbsp;&nbsp;&nbsp;视频URL: ${v.videoUrl || '无'}<br>
+                        `).join('<br>')}
+                    `;
+                    resultEl.classList.add('success');
+
+                    // 显示第一个已完成的视频
+                    const completedVideo = data.data.videos.find(v => v.status === 'COMPLETED' && v.videoUrl);
+                    if (completedVideo) {
+                        const container = document.getElementById('videoContainer');
+                        container.innerHTML = `
+                            <h3>第一个已完成的视频:</h3>
+                            <p><strong>${completedVideo.prompt}</strong></p>
+                            <video controls crossorigin="anonymous" playsinline style="width: 100%; max-width: 800px;">
+                                <source src="${completedVideo.videoUrl}" type="video/mp4">
+                            </video>
+                        `;
+                        log(`显示视频: ${completedVideo.prompt}`, 'success');
+                    }
+                } else {
+                    log(`❌ API返回错误: ${data.error}`, 'error');
+                    resultEl.innerHTML = `<strong>错误:</strong> ${data.error}`;
+                    resultEl.classList.add('error');
+                }
+            } catch (error) {
+                log(`❌ 请求失败: ${error.message}`, 'error');
+                resultEl.innerHTML = `<strong>请求失败:</strong> ${error.message}`;
+                resultEl.classList.add('error');
+            }
+        }
+
+        // 测试视频URL可访问性
+        async function testVideoUrl() {
+            log('测试视频URL可访问性...');
+            const url = 'https://openpt1.oss-cn-shanghai.aliyuncs.com/8bd131241f864dd9ae1e9ce7f6143cd7.mp4';
+            
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                if (response.ok) {
+                    log(`✅ 视频URL可访问 (状态码: ${response.status})`, 'success');
+                    log(`Content-Type: ${response.headers.get('content-type')}`, 'success');
+                    log(`Content-Length: ${response.headers.get('content-length')} bytes`, 'success');
+                } else {
+                    log(`❌ 视频URL不可访问 (状态码: ${response.status})`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 无法访问视频URL: ${error.message}`, 'error');
+                log('可能是CORS问题或网络问题', 'error');
+            }
+        }
+
+        // 页面加载完成
+        window.addEventListener('load', () => {
+            log('页面加载完成，开始测试...', 'success');
+        });
+    </script>
+</body>
+</html>

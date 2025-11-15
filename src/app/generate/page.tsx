@@ -84,36 +84,80 @@ export default function GeneratePage() {
 
       // 轮询检查生成状态
       const taskId = data.taskId || data.data?.taskId
+      const videoId = data.videoId
+      let pollCount = 0
+      const maxPollCount = 180 // 最多轮询180次（9分钟）
+      
+      console.log('🎬 开始轮询视频状态', { taskId, videoId })
+      
       const pollStatus = async (): Promise<void> => {
-        const statusResponse = await fetch(`/api/generate/video?taskId=${taskId}`)
-        const statusData = await statusResponse.json()
+        try {
+          pollCount++
+          
+          const statusResponse = await fetch(`/api/generate/video?taskId=${taskId}`)
+          const statusData = await statusResponse.json()
 
-        if (statusData.status === "completed" && statusData.videoUrl) {
-          if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current)
-          }
-          setGenerationProgress(100)
-          setTimeout(() => {
-          setGenerationData(prev => ({
-            ...prev,
-            isGenerating: false,
-            result: {
-              videoUrl: statusData.videoUrl,
-              id: taskId,
-              createdAt: statusData.createdAt
+          // 处理大写状态（匹配数据库枚举）
+          const status = statusData.status?.toUpperCase()
+
+          console.log(`📊 轮询第${pollCount}次:`, { 
+            status, 
+            hasVideoUrl: !!statusData.videoUrl,
+            videoUrlPreview: statusData.videoUrl ? statusData.videoUrl.substring(0, 50) + '...' : null
+          })
+
+          if (status === "COMPLETED" && statusData.videoUrl) {
+            // 视频生成完成
+            console.log('✅ 视频生成完成！', { videoUrl: statusData.videoUrl })
+            
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current)
             }
-          }))
-          }, 800) // 短暂延迟显示100%完成
-        } else if (statusData.status === "failed") {
-          throw new Error("视频生成失败")
-        } else {
-          // 继续轮询
-          setTimeout(pollStatus, 3000)
+            setGenerationProgress(100)
+            
+            // 立即显示视频
+            setTimeout(() => {
+              setGenerationData(prev => ({
+                ...prev,
+                isGenerating: false,
+                result: {
+                  videoUrl: statusData.videoUrl,
+                  id: taskId,
+                  createdAt: statusData.createdAt || new Date().toISOString()
+                }
+              }))
+              
+              // 显示成功提示
+              console.log('🎉 视频已显示在右侧')
+              alert('🎉 视频生成成功！您可以在右侧预览或前往我的视频查看。')
+            }, 500)
+          } else if (status === "FAILED") {
+            console.error('❌ 视频生成失败', { error: statusData.error })
+            throw new Error(statusData.error || "视频生成失败")
+          } else if (pollCount >= maxPollCount) {
+            // 超时，但不报错，让用户去我的视频查看
+            console.warn('⏰ 轮询超时，视频可能还在生成中')
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current)
+            }
+            setGenerationData(prev => ({ ...prev, isGenerating: false }))
+            alert('视频生成时间较长，请稍后在"我的视频"页面查看。')
+          } else {
+            // PROCESSING 或 PENDING 状态，继续轮询
+            // 前20次每2秒轮询，之后每3秒轮询
+            const interval = pollCount < 20 ? 2000 : 3000
+            console.log(`⏳ 继续轮询... (${interval/1000}秒后)`)
+            setTimeout(pollStatus, interval)
+          }
+        } catch (error) {
+          console.error('❌ 轮询错误:', error)
+          throw error
         }
       }
 
-      // 开始轮询
-      setTimeout(pollStatus, 3000)
+      // 立即开始第一次轮询
+      console.log('⏱️  2秒后开始第一次轮询...')
+      setTimeout(pollStatus, 2000)
 
     } catch (error) {
       console.error("生成失败:", error)
@@ -322,8 +366,17 @@ export default function GeneratePage() {
                       <video
                         src={generationData.result.videoUrl}
                         controls
+                        autoPlay
                         className="w-full h-auto"
                         poster="/placeholder-video.jpg"
+                        crossOrigin="anonymous"
+                        playsInline
+                        onError={(e) => {
+                          console.error('视频加载失败:', generationData.result?.videoUrl, e);
+                        }}
+                        onLoadedData={() => {
+                          console.log('视频加载成功:', generationData.result?.videoUrl);
+                        }}
                       >
                         您的浏览器不支持视频播放。
                       </video>
