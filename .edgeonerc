@@ -1,0 +1,12 @@
+{
+  "build": {
+    "command": "npm run build",
+    "output": ".next"
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
+}
