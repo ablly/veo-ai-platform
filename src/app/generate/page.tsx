@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatedBackground } from "@/components/ui/animated-background"
@@ -25,7 +25,8 @@ interface GenerationData {
   }
 }
 
-export default function GeneratePage() {
+// 将使用 useSearchParams 的逻辑提取到单独的组件
+function GeneratePageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -502,5 +503,24 @@ export default function GeneratePage() {
         </div>
       </section>
     </div>
+  )
+}
+
+// 主组件用 Suspense 包裹
+export default function GeneratePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-100">
+        <AnimatedBackground />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">正在加载...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <GeneratePageContent />
+    </Suspense>
   )
 }
