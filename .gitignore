@@ -39,6 +39,10 @@ yarn-error.log*
 # 支付宝配置敏感信息
 MY_ALIPAY_CONFIG.md
 
+# 临时测试文件
+1.txt
+2.txt
+
 # vercel
 .vercel
 

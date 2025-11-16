@@ -18,8 +18,20 @@ const faqs: FAQ[] = [
   {
     category: "使用指南",
     icon: Zap,
-    question: "VEO AI 如何工作？",
-    answer: "VEO AI 使用先进的AI模型将您的文字描述和参考图片转化为高质量视频。只需输入描述，可选上传参考图片（最多6张），AI将在30-60秒内生成视频。"
+    question: "平台支持哪些AI模型？",
+    answer: "我们集成了两大顶级AI模型：1) SORA 2.0（OpenAI）- 推荐模型，支持10-15秒时长，更多自定义选项；2) VEO 3.1（Google）- 专业模型，5秒时长，质量稳定。您可以根据需求自由切换使用。"
+  },
+  {
+    category: "使用指南",
+    icon: Zap,
+    question: "如何使用平台生成视频？",
+    answer: "简单三步：1) 选择AI模型（SORA 2.0或VEO 3.1）；2) 输入视频描述，可选上传参考图片（最多6张）；3) 点击生成按钮，等待30-60秒即可获得视频。新用户注册即送10积分，可免费生成1次SORA 2.0视频！"
+  },
+  {
+    category: "使用指南",
+    icon: Film,
+    question: "SORA 2.0 和 VEO 3.1 有什么区别？",
+    answer: "SORA 2.0：支持10-15秒时长，可自定义清晰度和比例，适合需要精细控制的创作。VEO 3.1：5秒时长，生成速度更快，质量稳定，适合快速出片。两个模型各有特色，您可以根据创作需求自由选择。"
   },
   {
     category: "使用指南",
@@ -31,13 +43,25 @@ const faqs: FAQ[] = [
     category: "使用指南",
     icon: Film,
     question: "如何获得最佳生成效果？",
-    answer: "1) 使用清晰、具体的描述；2) 描述画面细节、风格、氛围；3) 上传高质量的参考图片；4) 避免过于复杂或矛盾的描述；5) 可以参考视频广场中的优质案例。"
+    answer: "1) 选择合适的模型：快速出片用VEO 3.1，精细创作用SORA 2.0；2) 使用清晰、具体的描述；3) 描述画面细节、风格、氛围；4) 上传高质量的参考图片；5) 避免过于复杂或矛盾的描述；6) 参考视频广场中的优质案例。"
+  },
+  {
+    category: "使用指南",
+    icon: Zap,
+    question: "SORA 2.0 有哪些高级功能？",
+    answer: "SORA 2.0 支持更多自定义选项：1) 时长选择：10秒或15秒；2) 比例选择：16:9或9:16；3) 清晰度选择：标清或高清；4) 续作功能：基于已有视频继续创作。这些功能让您对视频有更精细的控制。"
+  },
+  {
+    category: "积分系统",
+    icon: CreditCard,
+    question: "新用户有什么福利？",
+    answer: "🎁 新用户注册即送10积分！可免费生成1次SORA 2.0视频（不上传图片的情况下）。这是体验我们平台最好的方式，无需信用卡，立即注册即可开始创作！"
   },
   {
     category: "积分系统",
     icon: CreditCard,
     question: "积分如何收费？",
-    answer: "新用户注册即送10积分。购买积分套餐：新手体验套餐¥6.6/5积分，基础套餐¥49/50积分，专业套餐¥99/150积分，企业套餐¥299/500积分。"
+    answer: "购买积分套餐：新手体验套餐¥6.6/5积分，基础套餐¥49/50积分，专业套餐¥99/150积分，企业套餐¥299/500积分。生成视频时会根据所选模型和上传的图片数量自动扣除相应积分。"
   },
   {
     category: "积分系统",
@@ -85,13 +109,13 @@ const faqs: FAQ[] = [
     category: "商业使用",
     icon: Film,
     question: "生成的视频可以商用吗？",
-    answer: "可以！所有通过VEO AI生成的视频完全归您所有，可用于任何商业用途，无需额外授权费用。但请确保您的描述和参考图片不侵犯他人版权。"
+    answer: "可以！无论使用SORA 2.0还是VEO 3.1生成的视频，完全归您所有，可用于任何商业用途，无需额外授权费用。但请确保您的描述和参考图片不侵犯他人版权。"
   },
   {
     category: "商业使用",
     icon: Film,
     question: "视频版权归谁所有？",
-    answer: "您拥有生成视频的完整版权。VEO AI不会声称对您生成的内容拥有任何权利。您可以自由使用、修改、出售您的视频作品。"
+    answer: "您拥有生成视频的完整版权。我们的平台不会声称对您生成的内容拥有任何权利。您可以自由使用、修改、出售您的视频作品，无论是用SORA 2.0还是VEO 3.1生成的。"
   },
   {
     category: "商业使用",
@@ -103,7 +127,7 @@ const faqs: FAQ[] = [
     category: "故障排除",
     icon: HelpCircle,
     question: "视频生成失败怎么办？",
-    answer: "可能原因：1) 积分不足；2) 描述包含违规内容；3) 系统暂时故障。请检查积分余额，修改描述后重试，或稍后再试。"
+    answer: "可能原因：1) 积分不足；2) 描述包含违规内容；3) 系统暂时故障。请检查积分余额，修改描述后重试，或尝试切换另一个模型，或稍后再试。如问题持续，请联系客服。"
   },
   {
     category: "故障排除",
@@ -164,11 +188,65 @@ export default function DocsPage() {
           </motion.div>
           
           <h1 className="text-5xl md:text-6xl font-bold mb-6 text-white">
-            常见问题
+            使用指南
           </h1>
           <p className="text-xl text-white/70 max-w-2xl mx-auto">
-            快速找到您需要的答案
+            快速了解如何使用 SORA 2.0 & VEO 3.1 双模型平台
           </p>
+        </motion.div>
+
+        {/* Quick Start Guide */}
+        <motion.div
+          className="max-w-5xl mx-auto mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <Card className="bg-gradient-to-br from-yellow-400/10 to-orange-500/10 backdrop-blur-md border-yellow-400/30 overflow-hidden">
+            <CardContent className="p-8">
+              <h2 className="text-3xl font-bold text-white mb-6 text-center">
+                🚀 快速开始
+              </h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 text-black font-bold text-2xl">
+                    1
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">选择模型</h3>
+                  <p className="text-white/70 text-sm">
+                    SORA 2.0（推荐）或 VEO 3.1（专业）
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 text-black font-bold text-2xl">
+                    2
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">输入描述</h3>
+                  <p className="text-white/70 text-sm">
+                    详细描述您想要的视频内容
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 text-black font-bold text-2xl">
+                    3
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">生成视频</h3>
+                  <p className="text-white/70 text-sm">
+                    30-60秒即可获得专业视频
+                  </p>
+                </div>
+              </div>
+              <div className="mt-8 text-center">
+                <a
+                  href="/"
+                  className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold rounded-lg transition-all shadow-lg hover:shadow-xl"
+                >
+                  <Zap className="w-5 h-5 mr-2" />
+                  立即开始创作
+                </a>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Search */}

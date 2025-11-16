@@ -11,7 +11,7 @@ import { useToast } from "@/lib/toast-context"
 import {
   Video, Search, Filter, Download, Trash2, Share2,
   Clock, CheckCircle, XCircle, Loader2, Play, Calendar,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Sparkles
 } from "lucide-react"
 
 interface VideoGeneration {
@@ -25,6 +25,7 @@ interface VideoGeneration {
   creditsConsumed: number
   createdAt: string
   completedAt?: string
+  model?: string  // 模型类型，用于判断是否显示续作按钮
 }
 
 export default function MyVideosPage() {
@@ -385,23 +386,37 @@ export default function MyVideosPage() {
 
                           {/* Actions */}
                           {video.status === "COMPLETED" && (
-                            <div className="flex gap-2 pt-2">
-                              <Button
-                                onClick={() => handleDownload(video)}
-                                size="sm"
-                                className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-medium"
-                              >
-                                <Download className="w-4 h-4 mr-2" />
-                                下载视频
-                              </Button>
-                              <Button
-                                onClick={() => handleDelete(video.id)}
-                                size="sm"
-                                variant="outline"
-                                className="border-red-500/30 text-red-400 hover:bg-red-500/10 px-3"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                            <div className="space-y-2 pt-2">
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={() => handleDownload(video)}
+                                  size="sm"
+                                  className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-medium"
+                                >
+                                  <Download className="w-4 h-4 mr-2" />
+                                  下载视频
+                                </Button>
+                                <Button
+                                  onClick={() => handleDelete(video.id)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-500/30 text-red-400 hover:bg-red-500/10 px-3"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              
+                              {/* 续作按钮 - 仅SORA2模型显示 */}
+                              {video.model === 'sora2' && (
+                                <Button
+                                  onClick={() => router.push(`/generate?remixFrom=${video.id}`)}
+                                  size="sm"
+                                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium"
+                                >
+                                  <Sparkles className="w-4 h-4 mr-2" />
+                                  续作此视频
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>

@@ -1,72 +1,52 @@
-/**
- * 单个视频操作API
- * DELETE: 删除视频
- */
-
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import pool from "@/lib/db"
+import { pool } from "@/lib/db"
 import { createErrorResponse, Errors } from "@/lib/error-handler"
-import { logger } from "@/lib/logger"
 
-/**
- * DELETE /api/videos/[id]
- * 删除视频（软删除）
- */
-export async function DELETE(
-  req: NextRequest,
+export async function GET(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const client = await pool.connect()
-  
   try {
+    // 验证用户登录
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      throw Errors.unauthorized()
+    if (!session?.user?.email) {
+      return createErrorResponse(Errors.unauthorized("用户未登录"))
     }
 
-    const userId = session.user.id
-    const { id } = await params
+    const { id: videoId } = await params
 
-    logger.info("DELETE", `/api/videos/${id}`, { userId, videoId: id })
-
-    // 检查视频是否存在且属于当前用户
-    const videoCheck = await client.query(
-      "SELECT id, user_id FROM video_generations WHERE id = $1",
-      [id]
+    // 查询视频信息
+    const result = await pool.query(
+      `SELECT vg.id, vg.prompt, vg.model, vg.remix_pid, vg.video_url, vg.status, vg.created_at
+       FROM video_generations vg
+       JOIN users u ON vg.user_id = u.id
+       WHERE vg.id = $1 AND u.email = $2`,
+      [videoId, session.user.email]
     )
 
-    if (videoCheck.rows.length === 0) {
-      throw Errors.notFound("视频")
+    if (result.rows.length === 0) {
+      return createErrorResponse(Errors.notFound("视频"))
     }
 
-    if (videoCheck.rows[0].user_id !== userId) {
-      throw Errors.forbidden("您无权删除此视频")
-    }
-
-    // 软删除：更新status为DELETED（如果需要真删除，可以直接DELETE）
-    await client.query(
-      "UPDATE video_generations SET status = 'FAILED', updated_at = NOW() WHERE id = $1",
-      [id]
-    )
-
-    logger.userAction(userId, "Video deleted", { videoId: id })
-    logger.info("DELETE", `/api/videos/${id}`, 200)
+    const video = result.rows[0]
 
     return NextResponse.json({
       success: true,
-      message: "视频已删除",
+      video: {
+        id: video.id,
+        prompt: video.prompt,
+        model: video.model,
+        remixPid: video.remix_pid,
+        videoUrl: video.video_url,
+        status: video.status,
+        createdAt: video.created_at
+      }
     })
 
   } catch (error) {
-    logger.info("DELETE", "/api/videos/[id]", 500)
-    return createErrorResponse(error)
-  } finally {
-    client.release()
+    console.error("获取视频信息失败:", error)
+    return createErrorResponse(error instanceof Error ? error : new Error(String(error)))
   }
 }
-
-
-

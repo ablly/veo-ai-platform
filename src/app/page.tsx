@@ -17,10 +17,12 @@ import { Card3D, Card3DHeader, Card3DTitle, Card3DDescription, Card3DContent } f
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { motion } from "framer-motion"
 import { Zap, Film, Sparkles, ArrowRight, CheckCircle, Image, Type, Download, Play } from "lucide-react"
+import { API_CONFIG } from "@/config/api"
 
 interface GenerationData {
   prompt: string
   images: File[]
+  model: string
   isGenerating: boolean
   result?: {
     videoUrl: string
@@ -36,12 +38,19 @@ export default function HomePage() {
   const [generationData, setGenerationData] = useState<GenerationData>({
     prompt: "",
     images: [],
+    model: "sora2", // 默认使用推荐的 SORA 2.0
     isGenerating: false
   })
   const [generationProgress, setGenerationProgress] = useState(0)
-  const progressIntervalRef = useRef<NodeJS.Timeout>()
+  const progressIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [loadingCredits, setLoadingCredits] = useState(true)
+
+  // 根据选择的模型计算所需积分（用于后端验证，不显示给用户）
+  const modelConfig = API_CONFIG.MODEL_CONFIGS[generationData.model as keyof typeof API_CONFIG.MODEL_CONFIGS]
+  const baseCredits = modelConfig?.credits || 15
+  const imageCreditsPerImage = modelConfig?.imageCredits || 5
+  const totalCredits = baseCredits + (generationData.images.length * imageCreditsPerImage)
 
   const handleStartCreating = () => {
     if (session) {
@@ -63,12 +72,7 @@ export default function HomePage() {
       return
     }
 
-    // 计算所需积分
-    const baseCredits = 15
-    const imageCredits = generationData.images.length * 5
-    const totalCredits = baseCredits + imageCredits
-
-    // 检查积分是否足够
+    // 检查积分是否足够（使用已计算的 totalCredits）
     if (userCredits !== null && userCredits < totalCredits) {
       alert("积分不足，请充值")
       return
@@ -111,7 +115,8 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           prompt: generationData.prompt,
-          images: uploadedImages
+          images: uploadedImages,
+          model: generationData.model // 传递选择的模型
         })
       })
 
@@ -127,7 +132,7 @@ export default function HomePage() {
         const statusResponse = await fetch(`/api/generate/video?taskId=${taskId}`)
         const statusData = await statusResponse.json()
 
-        if (statusData.data.status === "completed" && statusData.data.videoUrl) {
+        if (statusData.status === "COMPLETED" && statusData.videoUrl) {
           if (progressIntervalRef.current) {
             clearInterval(progressIntervalRef.current)
           }
@@ -137,14 +142,14 @@ export default function HomePage() {
             ...prev,
             isGenerating: false,
             result: {
-              videoUrl: statusData.data.videoUrl,
+              videoUrl: statusData.videoUrl,
               id: taskId,
-              createdAt: statusData.data.createdAt
+              createdAt: statusData.createdAt
             }
           }))
           }, 800)
-        } else if (statusData.data.status === "failed") {
-          throw new Error("视频生成失败")
+        } else if (statusData.status === "FAILED") {
+          throw new Error(statusData.error || "视频生成失败")
         } else {
           // 继续轮询
           setTimeout(pollStatus, 3000)
@@ -217,6 +222,8 @@ export default function HomePage() {
     fetchCredits()
   }, [session])
 
+
+
   // 预加载关键页面
   useEffect(() => {
     router.prefetch("/login")
@@ -265,7 +272,7 @@ export default function HomePage() {
             >
               <Sparkles className="w-4 h-4 text-yellow-400" />
               <span className="text-sm font-medium text-white">
-                基于VEO 3.1最新模型
+                集成 SORA 2.0 & VEO 3.1 双模型
               </span>
             </motion.div>
             
@@ -285,9 +292,9 @@ export default function HomePage() {
             )}
             
             <p className="text-xl text-white/80 mb-10 max-w-3xl mx-auto leading-relaxed">
-              革命性的AI视频生成技术，将您的创意转化为专业级视频内容
+              集成 OpenAI SORA 2.0 与 Google VEO 3.1 双引擎，将您的创意转化为专业级视频内容
               <br />
-              <span className="text-lg font-medium text-yellow-400">仅需3-5分钟，从文字到视频的完美蜕变</span>
+              <span className="text-lg font-medium text-yellow-400">双模型自由切换，30-60秒极速生成</span>
             </p>
           </motion.div>
 
@@ -297,14 +304,21 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <button
-              onClick={handleStartCreating}
-              className="btn-primary-fixed btn-gradient-yellow inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-bold px-8 py-4 text-lg group shadow-lg border-0 transition-all hover:shadow-xl h-auto"
-            >
-              <Zap className="w-5 h-5 mr-2 group-hover:animate-pulse" />
-              {session ? "立即开始创作" : "登录开始创作"}
-              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-            </button>
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={handleStartCreating}
+                className="btn-primary-fixed btn-gradient-yellow inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-bold px-8 py-4 text-lg group shadow-lg border-0 transition-all hover:shadow-xl h-auto"
+              >
+                <Zap className="w-5 h-5 mr-2 group-hover:animate-pulse" />
+                {session ? "立即开始创作" : "免费体验 SORA 2.0"}
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </button>
+              {!session && (
+                <p className="text-white/90 text-sm bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                  🎁 新用户注册送10积分，立即免费生成视频
+                </p>
+              )}
+            </div>
           </motion.div>
 
           {/* 视频展示 */}
@@ -339,27 +353,82 @@ export default function HomePage() {
             >
               <Sparkles className="w-4 h-4 text-yellow-400" />
               <span className="text-sm font-medium text-white">
-                AI驱动的视频生成
+                SORA 2.0 & VEO 3.1 双引擎驱动
               </span>
             </motion.div>
             <h2 className="text-4xl font-bold text-white mb-3">
               用文字描述，让AI为您创作
             </h2>
             <p className="text-white/70 text-lg max-w-2xl mx-auto">
-              输入您的创意描述，上传参考图片（可选），AI将在30-60秒内生成专业视频
+              选择 SORA 2.0 或 VEO 3.1 模型，输入创意描述，上传参考图片（可选），30-60秒生成专业视频
             </p>
           </div>
 
           {/* 并排布局：生成工具 + 视频展示 */}
-          <div className="grid lg:grid-cols-2 gap-8 items-start">
+          <div className="grid lg:grid-cols-2 gap-8 items-stretch">
             {/* 左侧：生成工具 */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl h-full flex flex-col">
               <CardHeader className="pb-4">
                 <CardTitle className="text-2xl font-bold text-white text-center">
                   创作工具
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 flex-1">
+              {/* 模型选择 */}
+              <div className="space-y-3">
+                <label className="flex items-center text-white font-medium text-sm">
+                  <Sparkles className="w-4 h-4 mr-2 text-yellow-400" />
+                  选择AI模型
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.values(API_CONFIG.MODEL_CONFIGS).map((model) => (
+                    <button
+                      key={model.id}
+                      type="button"
+                      onClick={() => setGenerationData(prev => ({ ...prev, model: model.id }))}
+                      disabled={generationData.isGenerating}
+                      className={`
+                        relative p-3 rounded-lg border-2 transition-all text-left
+                        ${generationData.model === model.id
+                          ? 'border-yellow-400 bg-yellow-400/10'
+                          : 'border-white/30 bg-white/5 hover:border-yellow-300'
+                        }
+                        ${generationData.isGenerating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      `}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{model.icon}</span>
+                          <span className="text-white font-bold text-sm">{model.name}</span>
+                        </div>
+                        {model.badge && (
+                          <span className={`px-1.5 py-0.5 text-white text-[10px] rounded-full ${
+                            model.badge === '推荐'
+                              ? 'bg-gradient-to-r from-yellow-400 to-orange-500'
+                              : 'bg-gradient-to-r from-blue-500 to-purple-600'
+                          }`}>
+                            {model.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-white/60 text-xs">{model.description}</p>
+                      {generationData.model === model.id && (
+                        <div className="absolute top-2 right-2 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* 违规内容警告 */}
+                <div className="mt-3 p-2.5 bg-red-500/10 border border-red-400/30 rounded-lg backdrop-blur-sm">
+                  <p className="text-xs text-red-300 font-medium">
+                    ⚠️ 重要提示：请勿输入违规内容（暴力、色情、政治敏感、侵权等），违规提示词消耗的积分不予退还。
+                  </p>
+                </div>
+              </div>
+
               {/* 文字描述输入 */}
               <div className="space-y-3">
                 <label className="flex items-center text-white font-medium text-sm">
@@ -437,11 +506,12 @@ export default function HomePage() {
                 </p>
               </div>
 
-              {/* 积分信息显示 */}
+
+
+              {/* 用户积分余额显示 */}
               {session && (
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 mb-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                   <div className="space-y-3">
-                    {/* 当前积分余额 */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 text-sm text-white/80">
                         <motion.div
@@ -449,13 +519,13 @@ export default function HomePage() {
                           animate={{ scale: [1, 1.2, 1] }}
                           transition={{ duration: 2, repeat: Infinity }}
                         />
-                        <span>当前积分余额:</span>
+                        <span>我的积分余额:</span>
                       </div>
                       <div className="text-sm font-bold">
                         {loadingCredits ? (
                           <div className="w-4 h-4 border border-white/30 border-t-white rounded-full animate-spin" />
                         ) : userCredits !== null ? (
-                          <span className={userCredits >= (15 + generationData.images.length * 5) ? "text-green-400" : "text-red-400"}>
+                          <span className={userCredits >= totalCredits ? "text-yellow-400" : "text-red-400"}>
                             {userCredits} 积分
                           </span>
                         ) : (
@@ -464,14 +534,13 @@ export default function HomePage() {
                       </div>
                     </div>
 
-
                     {/* 积分不足提示 */}
-                    {userCredits !== null && userCredits < (15 + generationData.images.length * 5) && (
+                    {!loadingCredits && userCredits !== null && userCredits < totalCredits && (
                       <div className="flex items-center space-x-2 text-sm text-red-400 bg-red-500/20 p-3 rounded-lg border border-red-500/30">
-                        <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                        <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-white text-xs font-bold">!</span>
                         </div>
-                        <span>积分不足，请充值</span>
+                        <span>积分余额不足，请充值</span>
                       </div>
                     )}
                   </div>
@@ -483,7 +552,7 @@ export default function HomePage() {
                 {session ? (
                   <Button
                     onClick={handleGenerate}
-                    disabled={!generationData.prompt.trim() || generationData.isGenerating || (userCredits !== null && userCredits < (15 + generationData.images.length * 5))}
+                    disabled={!generationData.prompt.trim() || generationData.isGenerating || (userCredits !== null && userCredits < totalCredits)}
                     className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {generationData.isGenerating ? (
@@ -503,57 +572,32 @@ export default function HomePage() {
                     )}
                   </Button>
                 ) : (
-                  <Button
-                    onClick={() => router.push("/login")}
-                    className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    登录开始创作（免费获得10积分）
-                  </Button>
+                  <div className="space-y-3">
+                    <Button
+                      onClick={() => router.push("/login")}
+                      className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
+                    >
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      登录开始创作
+                    </Button>
+                    <div className="text-center text-sm text-white/80 bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-3 rounded-lg border border-blue-400/30">
+                      <span className="font-bold text-yellow-400">🎁 新用户福利：</span>
+                      注册即送10积分，可免费生成1次 SORA 2.0 视频！
+                    </div>
+                  </div>
                 )}
               </div>
 
-              {/* 生成结果 */}
+              {/* 生成结果提示 - 只显示提示信息，视频在右侧显示 */}
               {generationData.result && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 p-6 bg-white/5 rounded-lg border border-white/20"
+                  className="mt-6 p-4 bg-green-500/10 rounded-lg border border-green-400/30"
                 >
-                  <h3 className="text-white font-bold text-lg mb-4 flex items-center">
-                    <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
-                    生成成功！
-                  </h3>
-                  <video
-                    src={generationData.result.videoUrl}
-                    controls
-                    className="w-full rounded-lg"
-                  />
-                  <div className="mt-4 flex gap-3">
-                    <Button
-                      onClick={() => {
-                        const a = document.createElement('a')
-                        a.href = generationData.result!.videoUrl
-                        a.download = `veo-ai-${generationData.result!.id}.mp4`
-                        a.click()
-                      }}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white"
-                    >
-                      下载视频
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setGenerationData({
-                          prompt: "",
-                          images: [],
-                          isGenerating: false
-                        })
-                      }}
-                      variant="outline"
-                      className="flex-1 border-white/30 text-white hover:bg-white/10"
-                    >
-                      生成新视频
-                    </Button>
+                  <div className="flex items-center text-green-300">
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    <span className="font-medium">生成成功！视频已显示在右侧预览区域</span>
                   </div>
                 </motion.div>
               )}
@@ -561,13 +605,13 @@ export default function HomePage() {
           </Card>
 
             {/* 右侧：视频展示区域 */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl h-full flex flex-col">
               <CardHeader className="pb-4">
                 <CardTitle className="text-2xl font-bold text-white text-center">
                   生成预览
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col">
                 {generationData.result ? (
                   /* 显示生成的视频 */
                   <motion.div
@@ -606,6 +650,7 @@ export default function HomePage() {
                             setGenerationData({
                               prompt: "",
                               images: [],
+                              model: "sora2",
                               isGenerating: false
                             })
                           }}
@@ -683,21 +728,6 @@ export default function HomePage() {
                         输入描述并点击生成，AI将为您创作专业视频
                       </p>
                     </div>
-                    
-                    {/* 示例视频缩略图 */}
-                    <div className="mt-6 space-y-3">
-                      <p className="text-white/50 text-xs text-center">生成示例</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            className="w-16 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded border border-white/10 flex items-center justify-center"
-                          >
-                            <Play className="w-4 h-4 text-white/40" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 )}
               </CardContent>
@@ -727,25 +757,25 @@ export default function HomePage() {
           {[
             {
               icon: Zap,
-              title: "闪电般速度",
-              desc: "3-5分钟生成",
-              content: "基于最新VEO 3.1模型，提供业界领先的生成速度，让您的创意即刻成真",
+              title: "双模型引擎",
+              desc: "SORA 2.0 & VEO 3.1",
+              content: "集成 OpenAI SORA 2.0 与 Google VEO 3.1，自由切换，满足不同创作需求",
               gradient: "from-yellow-400 to-orange-500",
               delay: 0
             },
             {
               icon: Film,
-              title: "电影级品质",
-              desc: "支持4K分辨率",
-              content: "从720p到4K，多种分辨率选择，每一帧都是艺术品级的视觉享受",
+              title: "极速生成",
+              desc: "30-60秒完成",
+              content: "业界领先的生成速度，支持多种时长和比例，让您的创意即刻成真",
               gradient: "from-purple-500 to-pink-500",
               delay: 0.2
             },
             {
               icon: Sparkles,
-              title: "智能积分制",
-              desc: "灵活按需使用",
-              content: "预付费积分模式，用多少花多少，多种套餐选择满足不同需求",
+              title: "灵活易用",
+              desc: "简单三步完成",
+              content: "选择模型、输入描述、上传图片，三步即可生成专业级视频内容",
               gradient: "from-blue-500 to-cyan-500",
               delay: 0.4
             }
@@ -871,16 +901,16 @@ export default function HomePage() {
           <div className="space-y-4">
             {[
               {
-                q: "VEO AI 如何工作？",
-                a: "VEO AI 使用先进的AI模型将您的文字描述和参考图片转化为高质量视频。只需输入描述，可选上传参考图片，AI将在30-60秒内生成视频。"
+                q: "平台如何工作？",
+                a: "我们集成了 OpenAI SORA 2.0 和 Google VEO 3.1 两大顶级AI模型。您可以选择任一模型，输入文字描述和参考图片（可选），AI将在30-60秒内生成高质量视频。"
               },
               {
                 q: "可以上传什么类型的图片？",
                 a: "支持JPG、PNG、WebP格式的图片，每张最大5MB。您可以上传照片、艺术作品、草图等任何视觉内容。AI最多可处理6张参考图片，以更好地理解您的创意。"
               },
               {
-                q: "积分如何收费？",
-                a: "新用户注册即送10积分。您可以通过灵活的套餐购买更多积分：新手体验套餐¥6.6/5积分，基础套餐¥49/50积分，专业套餐¥99/150积分，企业套餐¥299/500积分。"
+                q: "两个模型有什么区别？",
+                a: "SORA 2.0 支持更长时长（10-15秒）和更多自定义选项，适合需要精细控制的创作。VEO 3.1 生成速度更快，质量稳定，适合快速出片。您可以根据需求自由切换。"
               },
               {
                 q: "如果对生成的视频不满意怎么办？",
@@ -892,7 +922,7 @@ export default function HomePage() {
               },
               {
                 q: "生成的视频可以商用吗？",
-                a: "可以！所有通过VEO AI生成的视频完全归您所有，可用于任何商业用途，无需额外授权费用。但请确保您的描述和参考图片不侵犯他人版权。"
+                a: "可以！所有通过我们平台生成的视频完全归您所有，可用于任何商业用途，无需额外授权费用。但请确保您的描述和参考图片不侵犯他人版权。"
               }
             ].map((faq, index) => (
               <motion.details
@@ -984,7 +1014,7 @@ export default function HomePage() {
               className="btn-primary-fixed btn-gradient-yellow inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-bold px-12 py-6 text-xl group shadow-xl border-0 transition-all hover:shadow-2xl h-auto"
             >
               <Zap className="w-6 h-6 mr-3 group-hover:animate-pulse" />
-              免费开始创作
+              {session ? "立即开始创作" : "免费体验 SORA 2.0"}
               <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-1 transition-transform" />
             </button>
             <Button 
@@ -1004,7 +1034,7 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.6 }}
             viewport={{ once: true }}
           >
-            无需信用卡 · 即刻开始 · 随时升级
+            {session ? "无需信用卡 · 即刻开始 · 随时升级" : "🎁 新用户注册送10积分 · 免费生成 SORA 2.0 视频 · 无需信用卡"}
           </motion.p>
         </motion.div>
         
@@ -1068,7 +1098,7 @@ export default function HomePage() {
             viewport={{ once: true }}
           >
             <div className="space-y-2">
-              <p>&copy; 2025 VEO AI视频平台. 保留所有权利. | 基于最新VEO 3.1模型技术</p>
+              <p>&copy; 2025 VEO AI视频平台. 保留所有权利. | 集成 SORA 2.0 & VEO 3.1 双模型技术</p>
               <p>
                 <a 
                   href="https://beian.miit.gov.cn" 

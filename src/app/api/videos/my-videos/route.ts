@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       `SELECT 
         id, prompt, video_url, thumbnail_url, status,
         duration, resolution, credits_consumed,
-        created_at, completed_at, reference_images
+        created_at, completed_at, reference_images, model
        FROM video_generations
        ${whereClause}
        ORDER BY created_at DESC
@@ -76,6 +76,7 @@ export async function GET(req: NextRequest) {
       createdAt: row.created_at,
       completedAt: row.completed_at,
       referenceImages: row.reference_images,
+      model: row.model,
     }))
 
     // 调试日志：输出视频数据

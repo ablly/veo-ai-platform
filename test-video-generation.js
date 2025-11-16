@@ -1,188 +1,238 @@
 /**
- * 视频生成功能测试脚本
- * 用于验证速创API集成是否正常工作
+ * 测试视频生成功能
+ * 测试 SORA 2.0 和 VEO 3.1 两个模型的 API 调用
  */
 
-const SUCHUANG_API_URL = process.env.SUCHUANG_API_URL || 'https://api.wuyinkeji.com'
-const SUCHUANG_API_KEY = process.env.SUCHUANG_API_KEY
+const BASE_URL = 'http://localhost:3000'
 
-if (!SUCHUANG_API_KEY) {
-  console.error('❌ 错误：未设置 SUCHUANG_API_KEY 环境变量')
-  process.exit(1)
+// 测试配置
+const TEST_CONFIG = {
+  // 测试用户的 session cookie（需要先登录获取）
+  sessionCookie: '', // 需要从浏览器复制
+  
+  // 测试提示词
+  testPrompts: {
+    sora2: '一只可爱的小猫在草地上玩耍，阳光明媚，卡通风格',
+    veo3: '城市夜景，霓虹灯闪烁，车流穿梭'
+  }
 }
 
-console.log('🚀 开始测试速创API集成...\n')
+// 颜色输出
+const colors = {
+  reset: '\x1b[0m',
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m'
+}
 
-// 测试1：提交视频生成请求
-async function testVideoGeneration() {
-  console.log('📝 测试1：提交视频生成请求')
-  console.log('----------------------------------------')
+function log(message, color = 'reset') {
+  console.log(`${colors[color]}${message}${colors.reset}`)
+}
+
+// 测试 SORA 2.0 模型
+async function testSora2() {
+  log('\n=== 测试 SORA 2.0 模型 ===', 'cyan')
   
   try {
-    const payload = {
-      model: 'veo3',
-      prompt: '一只可爱的小猫在草地上玩耍',
-      type: 'text2video',
-      ratio: '16:9'
-    }
-    
-    console.log('请求参数:', JSON.stringify(payload, null, 2))
-    
-    const response = await fetch(`${SUCHUANG_API_URL}/api/video/veoPlus`, {
+    log('1. 发送生成请求...', 'blue')
+    const response = await fetch(`${BASE_URL}/api/generate/video`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json;charset:utf-8;',
-        'Authorization': SUCHUANG_API_KEY
+        'Content-Type': 'application/json',
+        'Cookie': TEST_CONFIG.sessionCookie
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        prompt: TEST_CONFIG.testPrompts.sora2,
+        model: 'sora2',
+        duration: 10,
+        aspectRatio: '9:16',
+        images: []
+      })
     })
+
+    const data = await response.json()
     
-    const result = await response.json()
-    
-    console.log('响应状态:', response.status)
-    console.log('响应数据:', JSON.stringify(result, null, 2))
-    
-    if (result.code === 200 && result.data && result.data.id) {
-      console.log('✅ 测试1通过：成功提交视频生成请求')
-      console.log(`   任务ID: ${result.data.id}\n`)
-      return result.data.id
-    } else {
-      console.log('❌ 测试1失败：API返回异常')
-      console.log(`   错误信息: ${result.msg || '未知错误'}\n`)
+    if (!response.ok) {
+      log(`❌ 请求失败: ${data.error?.message || data.message}`, 'red')
       return null
     }
+
+    log(`✅ 请求成功`, 'green')
+    log(`   任务ID: ${data.taskId}`, 'blue')
+    log(`   视频ID: ${data.videoId}`, 'blue')
+    log(`   模型: ${data.model}`, 'blue')
+    log(`   消耗积分: ${data.creditsUsed}`, 'blue')
+    
+    return {
+      taskId: data.taskId,
+      videoId: data.videoId,
+      model: data.model
+    }
+    
   } catch (error) {
-    console.log('❌ 测试1失败：请求异常')
-    console.log(`   错误: ${error.message}\n`)
+    log(`❌ 测试失败: ${error.message}`, 'red')
     return null
   }
 }
 
-// 测试2：查询视频生成状态
-async function testVideoStatus(taskId) {
-  console.log('📝 测试2：查询视频生成状态')
-  console.log('----------------------------------------')
+// 测试 VEO 3.1 模型
+async function testVeo3() {
+  log('\n=== 测试 VEO 3.1 模型 ===', 'cyan')
   
-  if (!taskId) {
-    console.log('⚠️  跳过测试2：没有有效的任务ID\n')
+  try {
+    log('1. 发送生成请求...', 'blue')
+    const response = await fetch(`${BASE_URL}/api/generate/video`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': TEST_CONFIG.sessionCookie
+      },
+      body: JSON.stringify({
+        prompt: TEST_CONFIG.testPrompts.veo3,
+        model: 'veo3',
+        aspectRatio: '16:9',
+        images: []
+      })
+    })
+
+    const data = await response.json()
+    
+    if (!response.ok) {
+      log(`❌ 请求失败: ${data.error?.message || data.message}`, 'red')
+      return null
+    }
+
+    log(`✅ 请求成功`, 'green')
+    log(`   任务ID: ${data.taskId}`, 'blue')
+    log(`   视频ID: ${data.videoId}`, 'blue')
+    log(`   模型: ${data.model}`, 'blue')
+    log(`   消耗积分: ${data.creditsUsed}`, 'blue')
+    
+    return {
+      taskId: data.taskId,
+      videoId: data.videoId,
+      model: data.model
+    }
+    
+  } catch (error) {
+    log(`❌ 测试失败: ${error.message}`, 'red')
+    return null
+  }
+}
+
+// 查询视频状态
+async function checkVideoStatus(taskId, model) {
+  log(`\n2. 查询视频状态 (任务ID: ${taskId})...`, 'blue')
+  
+  let attempts = 0
+  const maxAttempts = 40 // 最多等待2分钟
+  
+  while (attempts < maxAttempts) {
+    try {
+      const response = await fetch(`${BASE_URL}/api/generate/video?taskId=${taskId}`, {
+        headers: {
+          'Cookie': TEST_CONFIG.sessionCookie
+        }
+      })
+
+      const data = await response.json()
+      
+      if (data.status === 'COMPLETED') {
+        log(`✅ 视频生成完成！`, 'green')
+        log(`   视频URL: ${data.videoUrl}`, 'blue')
+        return data.videoUrl
+      } else if (data.status === 'FAILED') {
+        log(`❌ 视频生成失败: ${data.error}`, 'red')
+        return null
+      } else {
+        process.stdout.write(`   等待中... (${attempts + 1}/${maxAttempts})\r`)
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        attempts++
+      }
+    } catch (error) {
+      log(`❌ 查询失败: ${error.message}`, 'red')
+      return null
+    }
+  }
+  
+  log(`\n⚠️  超时：视频生成时间超过2分钟`, 'yellow')
+  return null
+}
+
+// 主测试函数
+async function runTests() {
+  log('\n' + '='.repeat(60), 'cyan')
+  log('视频生成功能测试', 'cyan')
+  log('='.repeat(60), 'cyan')
+  
+  // 检查配置
+  if (!TEST_CONFIG.sessionCookie) {
+    log('\n⚠️  警告: 未设置 sessionCookie', 'yellow')
+    log('请先登录网站，然后从浏览器开发者工具中复制 Cookie', 'yellow')
+    log('在脚本中设置 TEST_CONFIG.sessionCookie', 'yellow')
+    log('\n提示: 你也可以跳过这个测试，直接在浏览器中手动测试', 'blue')
     return
   }
   
-  try {
-    const url = `${SUCHUANG_API_URL}/api/video/veoDetail?key=${SUCHUANG_API_KEY}&id=${taskId}`
-    console.log('请求URL:', url)
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json;charset:utf-8;',
-        'Authorization': SUCHUANG_API_KEY
-      }
-    })
-    
-    const result = await response.json()
-    
-    console.log('响应状态:', response.status)
-    console.log('响应数据:', JSON.stringify(result, null, 2))
-    
-    if (result.code === 200 && result.data) {
-      console.log('✅ 测试2通过：成功查询视频状态')
-      
-      const statusMap = {
-        0: '排队中',
-        1: '成功',
-        2: '失败',
-        3: '生成中'
-      }
-      
-      console.log(`   状态: ${statusMap[result.data.status] || '未知'} (${result.data.status})`)
-      
-      if (result.data.status === 1 && result.data.content) {
-        console.log(`   视频URL: ${result.data.content}`)
-      } else if (result.data.status === 2) {
-        console.log(`   失败原因: ${result.data.fail_reason || '未知'}`)
-      }
-      console.log()
-    } else {
-      console.log('❌ 测试2失败：API返回异常')
-      console.log(`   错误信息: ${result.msg || '未知错误'}\n`)
-    }
-  } catch (error) {
-    console.log('❌ 测试2失败：请求异常')
-    console.log(`   错误: ${error.message}\n`)
+  const results = {
+    sora2: null,
+    veo3: null
+  }
+  
+  // 测试 SORA 2.0
+  const sora2Result = await testSora2()
+  if (sora2Result) {
+    const videoUrl = await checkVideoStatus(sora2Result.taskId, sora2Result.model)
+    results.sora2 = { success: !!videoUrl, videoUrl }
+  }
+  
+  // 等待一下再测试下一个
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  
+  // 测试 VEO 3.1
+  const veo3Result = await testVeo3()
+  if (veo3Result) {
+    const videoUrl = await checkVideoStatus(veo3Result.taskId, veo3Result.model)
+    results.veo3 = { success: !!videoUrl, videoUrl }
+  }
+  
+  // 输出测试结果
+  log('\n' + '='.repeat(60), 'cyan')
+  log('测试结果汇总', 'cyan')
+  log('='.repeat(60), 'cyan')
+  
+  log('\nSORA 2.0:', 'blue')
+  if (results.sora2?.success) {
+    log('  ✅ 测试通过', 'green')
+    log(`  视频URL: ${results.sora2.videoUrl}`, 'blue')
+  } else {
+    log('  ❌ 测试失败', 'red')
+  }
+  
+  log('\nVEO 3.1:', 'blue')
+  if (results.veo3?.success) {
+    log('  ✅ 测试通过', 'green')
+    log(`  视频URL: ${results.veo3.videoUrl}`, 'blue')
+  } else {
+    log('  ❌ 测试失败', 'red')
+  }
+  
+  log('\n' + '='.repeat(60), 'cyan')
+  
+  const totalTests = 2
+  const passedTests = (results.sora2?.success ? 1 : 0) + (results.veo3?.success ? 1 : 0)
+  
+  if (passedTests === totalTests) {
+    log(`\n🎉 所有测试通过！(${passedTests}/${totalTests})`, 'green')
+  } else {
+    log(`\n⚠️  部分测试失败 (${passedTests}/${totalTests})`, 'yellow')
   }
 }
 
-// 测试3：测试图片生成视频（可选）
-async function testImageToVideo() {
-  console.log('📝 测试3：测试图片生成视频（可选）')
-  console.log('----------------------------------------')
-  console.log('⚠️  此测试需要提供有效的图片URL，已跳过')
-  console.log('   如需测试，请修改脚本中的图片URL\n')
-  
-  // 取消注释以下代码并提供有效的图片URL进行测试
-  /*
-  try {
-    const payload = {
-      model: 'veo3',
-      prompt: '图片中的场景动起来',
-      type: 'img2video',
-      img_url: ['https://example.com/your-image.jpg'],
-      ratio: '16:9'
-    }
-    
-    const response = await fetch(`${SUCHUANG_API_URL}/api/video/veoPlus`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json;charset:utf-8;',
-        'Authorization': SUCHUANG_API_KEY
-      },
-      body: JSON.stringify(payload)
-    })
-    
-    const result = await response.json()
-    console.log('响应:', JSON.stringify(result, null, 2))
-  } catch (error) {
-    console.log('错误:', error.message)
-  }
-  */
-}
-
-// 运行所有测试
-async function runAllTests() {
-  console.log('='.repeat(50))
-  console.log('速创API集成测试')
-  console.log('='.repeat(50))
-  console.log()
-  
-  // 测试1：提交视频生成请求
-  const taskId = await testVideoGeneration()
-  
-  // 等待2秒
-  if (taskId) {
-    console.log('⏳ 等待2秒后查询状态...\n')
-    await new Promise(resolve => setTimeout(resolve, 2000))
-  }
-  
-  // 测试2：查询视频生成状态
-  await testVideoStatus(taskId)
-  
-  // 测试3：图片生成视频（可选）
-  await testImageToVideo()
-  
-  console.log('='.repeat(50))
-  console.log('测试完成')
-  console.log('='.repeat(50))
-  console.log()
-  console.log('💡 提示：')
-  console.log('   - 如果测试1失败，请检查API密钥是否正确')
-  console.log('   - 如果测试2失败，请检查查询接口是否正确')
-  console.log('   - 视频生成通常需要几分钟时间，请耐心等待')
-  console.log('   - 可以使用返回的任务ID多次查询状态')
-}
-
-// 执行测试
-runAllTests().catch(error => {
-  console.error('测试执行失败:', error)
-  process.exit(1)
+// 运行测试
+runTests().catch(error => {
+  log(`\n❌ 测试过程出错: ${error.message}`, 'red')
+  console.error(error)
 })

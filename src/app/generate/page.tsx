@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatedBackground } from "@/components/ui/animated-background"
 import { VideoInput } from "@/components/generate/video-input"
 import { ThreeDLoader } from "@/components/ui/3d-loader"
@@ -13,6 +13,10 @@ import { Sparkles, LogIn, UserPlus, Download, Play } from "lucide-react"
 interface GenerationData {
   prompt: string
   images: File[]
+  model: string
+  duration: number
+  aspectRatio: string
+  remixTargetId: string
   isGenerating: boolean
   result?: {
     videoUrl: string
@@ -24,13 +28,49 @@ interface GenerationData {
 export default function GeneratePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [generationData, setGenerationData] = useState<GenerationData>({
     prompt: "",
     images: [],
+    model: "sora2",  // 默认选择SORA2
+    duration: 10,
+    aspectRatio: "9:16",
+    remixTargetId: "",
     isGenerating: false
   })
   const [generationProgress, setGenerationProgress] = useState(0)
+  const [remixVideoInfo, setRemixVideoInfo] = useState<{prompt: string, videoId: string} | null>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout>()
+
+  // 处理续作功能：从URL参数获取remixFrom
+  useEffect(() => {
+    const remixFrom = searchParams.get('remixFrom')
+    if (remixFrom && session) {
+      // 获取视频信息
+      fetch(`/api/videos/${remixFrom}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.video) {
+            const video = data.video
+            // 自动设置模型为sora2
+            setGenerationData(prev => ({
+              ...prev,
+              model: 'sora2',
+              remixTargetId: video.remixPid || ''
+            }))
+            // 保存视频信息用于显示提示
+            setRemixVideoInfo({
+              prompt: video.prompt,
+              videoId: video.id
+            })
+          }
+        })
+        .catch(err => {
+          console.error('获取续作视频信息失败:', err)
+          alert('获取续作视频信息失败，请重试')
+        })
+    }
+  }, [searchParams, session])
 
   const handleGenerate = async () => {
     if (!generationData.prompt.trim()) return
@@ -72,7 +112,11 @@ export default function GeneratePage() {
         },
         body: JSON.stringify({
           prompt: generationData.prompt,
-          images: uploadedImages
+          images: uploadedImages,
+          model: generationData.model,
+          duration: generationData.duration,
+          aspectRatio: generationData.aspectRatio,
+          remixTargetId: generationData.remixTargetId
         })
       })
 
@@ -311,6 +355,27 @@ export default function GeneratePage() {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
+          {/* 续作提示 */}
+          {remixVideoInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-400/30 rounded-xl"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-900 mb-1">🎬 续作模式</h3>
+                  <p className="text-sm text-gray-600">
+                    正在基于视频「{remixVideoInfo.prompt.substring(0, 50)}...」进行续作创作
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Left Side - Input */}
             <motion.div
@@ -321,9 +386,17 @@ export default function GeneratePage() {
               <VideoInput
                 prompt={generationData.prompt}
                 images={generationData.images}
+                model={generationData.model}
+                duration={generationData.duration}
+                aspectRatio={generationData.aspectRatio}
+                remixTargetId={generationData.remixTargetId}
                 isGenerating={generationData.isGenerating}
                 onPromptChange={(prompt) => setGenerationData(prev => ({ ...prev, prompt }))}
                 onImagesChange={(images) => setGenerationData(prev => ({ ...prev, images }))}
+                onModelChange={(model) => setGenerationData(prev => ({ ...prev, model }))}
+                onDurationChange={(duration) => setGenerationData(prev => ({ ...prev, duration }))}
+                onAspectRatioChange={(aspectRatio) => setGenerationData(prev => ({ ...prev, aspectRatio }))}
+                onRemixTargetIdChange={(remixTargetId) => setGenerationData(prev => ({ ...prev, remixTargetId }))}
                 onGenerate={handleGenerate}
               />
             </motion.div>
@@ -403,8 +476,13 @@ export default function GeneratePage() {
                           setGenerationData({
                             prompt: "",
                             images: [],
+                            model: "sora2",
+                            duration: 10,
+                            aspectRatio: "9:16",
+                            remixTargetId: "",
                             isGenerating: false
                           })
+                          setRemixVideoInfo(null)
                         }}
                         variant="outline"
                         className="flex-1 border-2 border-yellow-400 text-yellow-700 hover:bg-yellow-50 font-bold py-3 px-6 rounded-xl"

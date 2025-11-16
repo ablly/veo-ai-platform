@@ -10,14 +10,17 @@ export const API_CONFIG = {
     API_KEY: process.env.SUCHUANG_API_KEY || '',
     ENDPOINTS: {
       // VEO3视频生成接口
-      GENERATE: '/api/video/veoPlus',
-      // 视频生成详情查询接口（根据官方文档）
-      QUERY: '/api/video/veoDetail'
+      VEO_GENERATE: '/api/video/veoPlus',
+      // 视频生成详情查询接口
+      VEO_QUERY: '/api/video/veoDetail',
+      // SORA2视频生成接口
+      SORA2_SUBMIT: '/api/sora2/submit',
+      // SORA2视频详情查询接口
+      SORA2_DETAIL: '/api/sora2/detail'
     },
     MODELS: {
       VEO3: 'veo3',
-      VEO3_FAST: 'veo3-fast', 
-      VEO3_PRO: 'veo3-pro'
+      SORA2: 'sora2'
     },
     TYPES: {
       TEXT_TO_VIDEO: 'text2video',
@@ -32,8 +35,35 @@ export const API_CONFIG = {
   // 成本配置（单位：元）
   COSTS: {
     VEO3: parseFloat(process.env.VEO_COST_PER_VIDEO || '1.1'),
-    VEO3_FAST: 2.0,
-    VEO3_PRO: 5.0
+    SORA2: parseFloat(process.env.SORA2_COST_PER_VIDEO || '1.5')
+  },
+  
+  // 模型配置
+  MODEL_CONFIGS: {
+    sora2: {
+      id: 'sora2',
+      name: 'SORA 2.0',
+      description: '专业级视频生成，支持更长时长',
+      icon: '🎥',
+      credits: 10,  // 基础10积分
+      imageCredits: 2,  // 每张图片2积分
+      maxDuration: 15,
+      durations: [10, 15],
+      aspectRatios: ['16:9', '9:16'],
+      badge: '推荐'  // 显示推荐标签
+    },
+    veo3: {
+      id: 'veo3',
+      name: 'VEO 3.1',
+      description: '稳定版本，质量更高',
+      icon: '🎬',
+      credits: 15,
+      imageCredits: 5,  // 每张图片5积分
+      maxDuration: 5,
+      durations: [5],
+      aspectRatios: ['16:9', '9:16', '1:1'],
+      badge: '专业模型'  // 显示专业模型标签
+    }
   },
   
   // 请求配置

@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger"
 import { measurePerformance } from "@/lib/logger"
 import { CREDIT_CONFIG } from "@/config/credits"
 import { API_CONFIG } from "@/config/api"
+import { generateVideo, checkVideoStatus } from "@/lib/video-models"
 
 // 速创API配置
 const SUCHUANG_API_URL = API_CONFIG.SUCHUANG.BASE_URL
@@ -28,10 +29,10 @@ export async function POST(request: NextRequest) {
     const { 
       prompt, 
       images = [], 
-      duration = 5, 
-      aspectRatio = "16:9",
-      model = "veo3",
-      watermark = ""
+      model = "sora2",
+      duration = model === 'sora2' ? 10 : 5, 
+      aspectRatio = model === 'sora2' ? "9:16" : "16:9",
+      remixTargetId = ""
     } = body
 
     // 验证必需参数
@@ -48,9 +49,11 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(Errors.validationError("视频描述不能超过500个字符"))
     }
 
-    // 计算所需积分
-    const baseCredits = CREDIT_CONFIG.VIDEO_GENERATION.BASE_COST
-    const imageCredits = images.length * CREDIT_CONFIG.VIDEO_GENERATION.IMAGE_COST
+    // 根据模型计算所需积分
+    const modelConfig = API_CONFIG.MODEL_CONFIGS[model as keyof typeof API_CONFIG.MODEL_CONFIGS]
+    const baseCredits = modelConfig?.credits || 15
+    const imageCreditsPerImage = modelConfig?.imageCredits || 5
+    const imageCredits = images.length * imageCreditsPerImage
     const totalCredits = baseCredits + imageCredits
 
     logger.info("开始视频生成", {
@@ -148,28 +151,26 @@ export async function POST(request: NextRequest) {
       // 创建视频生成记录
       const videoResult = await client.query(
         `INSERT INTO video_generations 
-         (user_id, prompt, reference_images, status, credits_consumed, created_at)
-         VALUES ($1, $2, $3, 'PROCESSING', $4, NOW())
+         (user_id, prompt, model, reference_images, status, credits_consumed, created_at)
+         VALUES ($1, $2, $3, $4, 'PROCESSING', $5, NOW())
          RETURNING id`,
-        [user.id, prompt, JSON.stringify(images), totalCredits]
+        [user.id, prompt, model, JSON.stringify(images), totalCredits]
       )
 
       const videoId = videoResult.rows[0].id
 
       await client.query('COMMIT')
 
-      // 调用速创API生成视频
-      const veoResponse = await callSuchuangAPI({
+      // 根据模型调用对应的API
+      const apiResponse = await generateVideo(model, {
         prompt,
         images,
-        videoId,
         duration,
         aspectRatio,
-        model,
-        watermark
+        remixTargetId
       })
       
-      if (!veoResponse.success) {
+      if (!apiResponse.success) {
         // VEO API调用失败，回滚积分
         await pool.query(
           `UPDATE user_credit_accounts 
@@ -185,30 +186,31 @@ export async function POST(request: NextRequest) {
            SET status = 'FAILED', 
                error_message = $1
            WHERE id = $2`,
-          [veoResponse.error, videoId]
+          [apiResponse.error, videoId]
         )
 
         // 如果是API余额不足，发送管理员通知邮件
-        if (veoResponse.error && veoResponse.error.includes("余额不足")) {
+        if (apiResponse.error && apiResponse.error.includes("余额不足")) {
           import('@/lib/email').then(({ EmailService }) => {
             EmailService.sendAdminAlert({
               subject: "🚨 紧急：API服务商账户余额不足",
-              message: `速创API账户余额不足，影响视频生成功能。请立即充值。\n\n错误详情：${veoResponse.error}\n时间：${new Date().toLocaleString('zh-CN')}`,
+              message: `${model.toUpperCase()} API账户余额不足，影响视频生成功能。请立即充值。\n\n错误详情：${apiResponse.error}\n时间：${new Date().toLocaleString('zh-CN')}`,
               adminEmail: "3533912007@qq.com"
             }).catch(err => logger.error('发送管理员通知邮件失败', { error: err }))
           })
         }
 
-        return createErrorResponse(Errors.externalServiceError("速创API", veoResponse.error || "视频生成失败"))
+        return createErrorResponse(Errors.externalServiceError(`${model.toUpperCase()} API`, apiResponse.error || "视频生成失败"))
       }
 
       // 更新视频生成记录
       await pool.query(
         `UPDATE video_generations 
          SET external_task_id = $1,
+             model = $2,
              updated_at = NOW()
-         WHERE id = $2`,
-        [veoResponse.taskId, videoId]
+         WHERE id = $3`,
+        [apiResponse.taskId, model, videoId]
       )
 
       // 记录API成本
@@ -219,20 +221,20 @@ export async function POST(request: NextRequest) {
         [user.id, videoId, 'suchuang', model, VEO_COST_PER_VIDEO]
       )
 
-      const requestDuration = measurePerformance(startTime)
-      logger.info("视频生成请求成功", {
+      logger.info(`${model.toUpperCase()} 视频生成请求成功`, {
         user_email: session.user.email,
         video_id: videoId,
-        task_id: veoResponse.taskId,
-        duration: requestDuration
+        task_id: apiResponse.taskId,
+        model: model
       })
 
       return NextResponse.json({
         success: true,
-        taskId: veoResponse.taskId,
+        taskId: apiResponse.taskId,
         videoId: videoId,
+        model: model,
         creditsUsed: totalCredits,
-        message: "视频生成已开始，请等待处理完成"
+        message: `${model === 'sora2' ? 'SORA 2.0' : 'VEO 3.1'} 视频生成已开始，请等待处理完成`
       })
 
     } catch (dbError) {
@@ -283,42 +285,44 @@ export async function GET(request: NextRequest) {
 
     const video = result.rows[0]
 
-    // 如果状态是processing，查询速创API获取最新状态
+    // 如果状态是processing，根据模型类型查询对应的API获取最新状态
     if (video.status === 'PROCESSING') {
-      const veoStatus = await checkSuchuangStatus(taskId)
+      const model = video.model || 'veo3' // 默认使用veo3
+      const apiStatus = await checkVideoStatus(model, taskId)
       
-      if (veoStatus.success) {
-        if (veoStatus.status === 'COMPLETED' && veoStatus.videoUrl) {
-          // 更新数据库状态
+      if (apiStatus.success) {
+        if (apiStatus.status === 'COMPLETED' && apiStatus.videoUrl) {
+          // 更新数据库状态（包括PID用于续作功能）
           await pool.query(
             `UPDATE video_generations 
              SET status = 'COMPLETED',
                  video_url = $1,
+                 remix_pid = $2,
                  completed_at = NOW()
-             WHERE external_task_id = $2`,
-            [veoStatus.videoUrl, taskId]
+             WHERE external_task_id = $3`,
+            [apiStatus.videoUrl, apiStatus.remixPid || null, taskId]
           )
           
           return NextResponse.json({
             success: true,
             status: 'COMPLETED',  // 返回大写状态
-            videoUrl: veoStatus.videoUrl,
+            videoUrl: apiStatus.videoUrl,
             createdAt: video.created_at
           })
-        } else if (veoStatus.status === 'FAILED') {
+        } else if (apiStatus.status === 'FAILED') {
           // 更新数据库状态为失败
           await pool.query(
             `UPDATE video_generations 
              SET status = 'FAILED',
                  error_message = $1
              WHERE external_task_id = $2`,
-            [veoStatus.error || '生成失败', taskId]
+            [apiStatus.error || '生成失败', taskId]
           )
           
           return NextResponse.json({
             success: false,
             status: 'FAILED',  // 返回大写状态
-            error: veoStatus.error || '视频生成失败'
+            error: apiStatus.error || '视频生成失败'
           })
         }
       }
@@ -449,107 +453,6 @@ async function callSuchuangAPI(options: {
   }
 }
 
-// 检查速创API状态
-async function checkSuchuangStatus(taskId: string) {
-  try {
-    if (!SUCHUANG_API_KEY) {
-      throw new Error("速创API密钥未配置")
-    }
-
-    // 根据速创API官方文档：GET /api/video/veoDetail?key=你的密钥&id=1
-    const response = await fetch(
-      `${SUCHUANG_API_URL}/api/video/veoDetail?key=${SUCHUANG_API_KEY}&id=${taskId}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json;charset:utf-8;',
-          'Authorization': SUCHUANG_API_KEY
-        },
-        signal: AbortSignal.timeout(10000) // 10秒超时
-      }
-    )
-
-    if (!response.ok) {
-      throw new Error(`速创API状态查询错误: ${response.status}`)
-    }
-
-    const result = await response.json()
-    
-    // 速创API响应格式（根据官方文档）:
-    // {
-    //   code: 200,
-    //   msg: "成功",
-    //   data: {
-    //     id: 1352,
-    //     content: "https://openpt.tos-cn-shanghai.volces.com/veo/...",
-    //     status: 1,  // 0:排队中，1:成功，2:失败，3:生成中
-    //     fail_reason: "",
-    //     created_at: "2025-08-23 10:37:17",
-    //     updated_at: "2025-08-23 10:39:10"
-    //   }
-    // }
-    
-    if (result.code !== 200 || !result.data) {
-      throw new Error(result.msg || "速创API返回数据格式错误")
-    }
-
-    const data = result.data
-    
-    // 记录原始响应用于调试
-    logger.info("速创API原始响应", { 
-      taskId, 
-      status: data.status, 
-      hasContent: !!data.content,
-      contentPreview: data.content ? data.content.substring(0, 80) : null
-    })
-    
-    // 根据status数字判断状态（0:排队中，1:成功，2:失败，3:生成中）
-    if (data.status === 1 && data.content) {
-      // 成功生成
-      logger.info("✅ 视频生成成功，URL已获取", { 
-        taskId, 
-        videoUrl: data.content 
-      })
-      return {
-        success: true,
-        status: 'COMPLETED',  // 使用大写，匹配数据库枚举
-        videoUrl: data.content,
-        error: null
-      }
-    } else if (data.status === 2) {
-      // 生成失败
-      return {
-        success: true,
-        status: 'FAILED',  // 使用大写，匹配数据库枚举
-        videoUrl: null,
-        error: data.fail_reason || '视频生成失败'
-      }
-    } else if (data.status === 0 || data.status === 3) {
-      // 排队中或生成中
-      return {
-        success: true,
-        status: 'PROCESSING',  // 使用大写，匹配数据库枚举
-        videoUrl: null,
-        error: null
-      }
-    } else {
-      // 未知状态
-      return {
-        success: true,
-        status: 'PROCESSING',  // 使用大写，匹配数据库枚举
-        videoUrl: null,
-        error: null
-      }
-    }
-
-  } catch (error) {
-    logger.error("速创API状态查询失败", { 
-      error: error instanceof Error ? error.message : String(error), 
-      taskId 
-    })
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "状态查询失败"
-    }
-  }
-}
+// checkSuchuangStatus 函数已删除
+// 现在使用 video-models.ts 中的 checkVideoStatus 函数
+// 该函数会根据模型类型自动调用正确的API端点

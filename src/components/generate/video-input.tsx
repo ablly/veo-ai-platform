@@ -4,24 +4,47 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ImageUpload } from "./image-upload"
 import { MagicTextarea } from "@/components/ui/magic-textarea"
-import { motion } from "framer-motion"
+import { ModelSelector } from "./model-selector"
+import { Sora2Options } from "./sora2-options"
+import { motion, AnimatePresence } from "framer-motion"
 import { Zap, Type, Image as ImageIcon, Coins } from "lucide-react"
+import { API_CONFIG } from "@/config/api"
 
 interface VideoInputProps {
   prompt: string
   images: File[]
+  model: string
+  duration?: number
+  aspectRatio?: string
+  size?: string
+  remixTargetId?: string
   isGenerating: boolean
   onPromptChange: (prompt: string) => void
   onImagesChange: (images: File[]) => void
+  onModelChange: (model: string) => void
+  onDurationChange?: (duration: number) => void
+  onAspectRatioChange?: (ratio: string) => void
+  onSizeChange?: (size: string) => void
+  onRemixTargetIdChange?: (id: string) => void
   onGenerate: () => void
 }
 
 export function VideoInput({
   prompt,
   images,
+  model,
+  duration = 10,
+  aspectRatio = '9:16',
+  size = 'small',
+  remixTargetId,
   isGenerating,
   onPromptChange,
   onImagesChange,
+  onModelChange,
+  onDurationChange,
+  onAspectRatioChange,
+  onSizeChange,
+  onRemixTargetIdChange,
   onGenerate
 }: VideoInputProps) {
   const maxLength = 500
@@ -29,9 +52,11 @@ export function VideoInput({
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [loadingCredits, setLoadingCredits] = useState(true)
 
-  // 计算所需积分（新规则：15积分=1视频）
-  const baseCredits = 15
-  const imageCredits = images.length * 5
+  // 根据模型计算所需积分
+  const modelConfig = API_CONFIG.MODEL_CONFIGS[model as keyof typeof API_CONFIG.MODEL_CONFIGS]
+  const baseCredits = modelConfig?.credits || 15
+  const imageCreditsPerImage = modelConfig?.imageCredits || 5
+  const imageCredits = images.length * imageCreditsPerImage
   const totalCredits = baseCredits + imageCredits
 
   // 获取用户积分余额
@@ -62,6 +87,19 @@ export function VideoInput({
 
   return (
     <div className="space-y-6">
+      {/* Model Selector */}
+      <motion.div
+        className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-yellow-200/50 p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <ModelSelector
+          selectedModel={model}
+          onModelChange={onModelChange}
+        />
+      </motion.div>
+
       {/* Text Input Section */}
       <motion.div
         className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-yellow-200/50 p-6"
@@ -112,7 +150,10 @@ export function VideoInput({
           <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg flex items-center justify-center">
             <ImageIcon className="w-4 h-4 text-white" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">🖼️ 参考图像 ({images.length}/6)</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            🖼️ 参考图像 ({images.length}/6)
+            {model === 'sora2' && <span className="text-sm text-red-500 ml-2">（请避免真人形象）</span>}
+          </h3>
         </div>
         
         <ImageUpload
@@ -124,8 +165,29 @@ export function VideoInput({
         
         <div className="mt-3 text-sm text-gray-600">
           💡 上传参考图像，帮助 AI 更好地理解你的需求（可选）
+          {model === 'sora2' && (
+            <span className="block mt-1 text-red-600">
+              ⚠️ SORA 2.0 要求：图片须避免出现真人形象
+            </span>
+          )}
         </div>
       </motion.div>
+
+      {/* SORA2 高级选项 */}
+      <AnimatePresence>
+        {model === 'sora2' && onDurationChange && onAspectRatioChange && onSizeChange && onRemixTargetIdChange && (
+          <Sora2Options
+            duration={duration}
+            aspectRatio={aspectRatio}
+            size={size}
+            remixTargetId={remixTargetId}
+            onDurationChange={onDurationChange}
+            onAspectRatioChange={onAspectRatioChange}
+            onSizeChange={onSizeChange}
+            onRemixTargetIdChange={onRemixTargetIdChange}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Generate Button */}
       <motion.div
