@@ -1,0 +1,31 @@
+# 依赖
+node_modules
+npm-debug.log
+
+# Next.js
+.next
+out
+
+# 环境变量
+.env
+.env.local
+.env*.local
+
+# Git
+.git
+.gitignore
+
+# 测试和文档
+*.md
+test-*.js
+*.test.js
+*.spec.js
+
+# 临时文件
+*.txt
+*.log
+.DS_Store
+
+# IDE
+.vscode
+.idea
