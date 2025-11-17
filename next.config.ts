@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // 生成唯一的构建ID，强制Vercel重新构建
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
 };
 
 export default nextConfig;
