@@ -49,6 +49,10 @@ export async function GET(request: NextRequest) {
         vg.credits_consumed,
         vg.api_provider,
         vg.model,
+        vg.external_task_id,
+        vg.reference_images,
+        vg.duration,
+        vg.resolution,
         vg.created_at,
         vg.completed_at,
         vg.error_message
@@ -77,11 +81,13 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(totalVideos / limit)
 
     logger.info("管理员查询视频列表", {
-      page,
-      limit,
-      search,
-      status,
-      total_videos: totalVideos
+      context: {
+        page,
+        limit,
+        search,
+        status,
+        total_videos: totalVideos
+      }
     })
 
     return NextResponse.json({
@@ -94,7 +100,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    logger.error("查询视频列表失败", { error })
-    return createErrorResponse(Errors.INTERNAL_SERVER_ERROR, "查询视频列表失败")
+    logger.error("查询视频列表失败", { context: { error: error instanceof Error ? error.message : String(error) } })
+    return createErrorResponse(Errors.databaseError("查询视频列表失败"))
   }
 }
