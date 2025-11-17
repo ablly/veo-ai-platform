@@ -39,7 +39,6 @@ export default function UsersPage() {
     email: '',
     name: '',
     credits: 0,
-    packageId: '',
     status: 'active' as 'active' | 'inactive' | 'banned'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -185,7 +184,6 @@ export default function UsersPage() {
       email: '',
       name: '',
       credits: 0,
-      packageId: '',
       status: 'active'
     })
     setShowAddModal(true)
@@ -217,7 +215,6 @@ export default function UsersPage() {
           email: '',
           name: '',
           credits: 0,
-          packageId: '',
           status: 'active'
         })
         fetchUsers() // 刷新用户列表
@@ -614,21 +611,7 @@ export default function UsersPage() {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">选择套餐</label>
-                <select
-                  value={addForm.packageId}
-                  onChange={(e) => setAddForm({...addForm, packageId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">无套餐</option>
-                  {packages.map(pkg => (
-                    <option key={pkg.id} value={pkg.id}>
-                      {pkg.name} - {pkg.credits}积分 (¥{pkg.price})
-                    </option>
-                  ))}
-                </select>
-              </div>
+
               
               <div className="flex items-center space-x-3 pt-4">
                 <button

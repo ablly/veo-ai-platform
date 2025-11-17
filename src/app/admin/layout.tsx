@@ -13,7 +13,8 @@ import {
   BarChart3, 
   Settings,
   LogOut,
-  Shield
+  Shield,
+  Mail
 } from "lucide-react"
 
 const adminNavItems = [
@@ -36,6 +37,11 @@ const adminNavItems = [
     name: "视频管理",
     href: "/admin/videos", 
     icon: Video
+  },
+  {
+    name: "消息通知",
+    href: "/admin/notifications",
+    icon: Mail
   },
   {
     name: "系统设置",

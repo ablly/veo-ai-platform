@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react"
 import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { Shield, Mail, Send, ArrowLeft } from "lucide-react"
+import { Shield, Mail, Send, ArrowLeft, Lock } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminLoginPage() {
   const [mounted, setMounted] = useState(false)
+  const [loginMethod, setLoginMethod] = useState<'password' | 'code'>('password')
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [code, setCode] = useState("")
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [loading, setLoading] = useState(false)
@@ -26,6 +28,46 @@ export default function AdminLoginPage() {
         <div className="text-white">加载中...</div>
       </div>
     )
+  }
+
+  const loginWithPassword = async () => {
+    if (!email || !password) {
+      setError("请输入邮箱和密码")
+      return
+    }
+
+    // 验证是否为管理员邮箱
+    if (email !== "3533912007@qq.com") {
+      setError("此邮箱没有管理员权限")
+      return
+    }
+
+    setLoading(true)
+    setError("")
+
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false
+      })
+
+      if (result?.error) {
+        setError("邮箱或密码错误")
+      } else {
+        // 验证登录成功后检查权限
+        const session = await getSession()
+        if (session?.user?.email === "3533912007@qq.com") {
+          router.push('/admin/statistics')
+        } else {
+          setError("登录失败，没有管理员权限")
+        }
+      }
+    } catch (error) {
+      setError("登录失败，请重试")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const sendVerificationCode = async () => {
@@ -146,8 +188,97 @@ export default function AdminLoginPage() {
             </div>
           )}
 
-          {/* 邮箱输入步骤 */}
-          {step === 'email' && (
+          {/* 登录方式切换 */}
+          <div className="flex items-center space-x-2 mb-6">
+            <button
+              onClick={() => {
+                setLoginMethod('password')
+                setError("")
+                setSuccess("")
+                setStep('email')
+              }}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                loginMethod === 'password'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              <Lock className="w-4 h-4 inline mr-2" />
+              密码登录
+            </button>
+            <button
+              onClick={() => {
+                setLoginMethod('code')
+                setError("")
+                setSuccess("")
+                setStep('email')
+              }}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                loginMethod === 'code'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              <Mail className="w-4 h-4 inline mr-2" />
+              验证码登录
+            </button>
+          </div>
+
+          {/* 密码登录表单 */}
+          {loginMethod === 'password' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-white/90 text-sm font-medium mb-2">
+                  管理员邮箱
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="请输入管理员邮箱"
+                    className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/90 text-sm font-medium mb-2">
+                  密码
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="请输入密码"
+                    className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyPress={(e) => e.key === 'Enter' && loginWithPassword()}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={loginWithPassword}
+                disabled={loading}
+                className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <Shield className="w-5 h-5 mr-2" />
+                    登录管理后台
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* 验证码登录表单 */}
+          {loginMethod === 'code' && step === 'email' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-white/90 text-sm font-medium mb-2">
@@ -187,7 +318,7 @@ export default function AdminLoginPage() {
           )}
 
           {/* 验证码输入步骤 */}
-          {step === 'code' && (
+          {loginMethod === 'code' && step === 'code' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-white/90 text-sm font-medium mb-2">
