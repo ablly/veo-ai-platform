@@ -33,13 +33,13 @@ export async function POST(req: NextRequest) {
     await client.query('BEGIN')
     
     try {
-      // 1. 检查邮箱和手机号是否已存在
-      const checkEmail = await client.query(
-        'SELECT id FROM users WHERE email = $1',
+      // 1. 检查邮箱是否已验证
+      const checkEmailVerified = await client.query(
+        'SELECT id, email_verified FROM users WHERE email = $1',
         [email]
       )
       
-      if (checkEmail.rows.length > 0) {
+      if (checkEmailVerified.rows.length > 0) {
         await client.query('ROLLBACK')
         return NextResponse.json(
           { error: "该邮箱已被注册" },
@@ -47,6 +47,24 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      // 2. 验证邮箱是否已通过验证码验证
+      // 检查是否有已验证的验证码记录
+      const verifiedCodeCheck = await client.query(
+        `SELECT id FROM email_verification_codes 
+         WHERE email = $1 AND used = true 
+         ORDER BY created_at DESC LIMIT 1`,
+        [email]
+      )
+
+      if (verifiedCodeCheck.rows.length === 0) {
+        await client.query('ROLLBACK')
+        return NextResponse.json(
+          { error: "请先验证邮箱" },
+          { status: 400 }
+        )
+      }
+
+      // 3. 检查手机号是否已存在
       const checkPhone = await client.query(
         'SELECT id FROM users WHERE phone = $1',
         [phone]
@@ -60,14 +78,14 @@ export async function POST(req: NextRequest) {
         )
       }
       
-      // 2. 加密密码
+      // 4. 加密密码
       const hashedPassword = await bcryptjs.hash(password, 12)
       console.log("🔐 密码加密完成")
       
-      // 3. 创建用户
+      // 5. 创建用户（标记邮箱已验证）
       const createUserResult = await client.query(
-        `INSERT INTO users (email, phone, name, password, created_at, updated_at) 
-         VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+        `INSERT INTO users (email, phone, name, password, email_verified, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW()) 
          RETURNING id, email, phone, name, created_at`,
         [email, phone, name, hashedPassword]
       )
@@ -75,7 +93,7 @@ export async function POST(req: NextRequest) {
       const newUser = createUserResult.rows[0]
       console.log("✅ 用户创建成功，ID:", newUser.id)
       
-      // 4. 创建积分账户（赠送新用户体验积分）
+      // 6. 创建积分账户（赠送新用户体验积分）
       const bonusCredits = CREDIT_CONFIG.WELCOME_CREDITS
       await client.query(
         `INSERT INTO user_credit_accounts 

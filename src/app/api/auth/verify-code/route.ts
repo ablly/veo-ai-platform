@@ -14,11 +14,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // 查找有效的验证码
+    // 查找有效的验证码，直接在数据库层面检查过期时间
     const codeResult = await client.query(
       `SELECT id, email, code, expires_at, used 
        FROM email_verification_codes 
-       WHERE email = $1 AND code = $2 AND used = false
+       WHERE email = $1 
+         AND code = $2 
+         AND used = false 
+         AND expires_at > NOW()
        ORDER BY created_at DESC 
        LIMIT 1`,
       [email, code]
@@ -33,14 +36,6 @@ export async function POST(request: Request) {
 
     const verificationCode = codeResult.rows[0]
 
-    // 检查验证码是否过期
-    if (new Date() > new Date(verificationCode.expires_at)) {
-      return NextResponse.json(
-        { error: "验证码已过期，请重新获取" },
-        { status: 400 }
-      )
-    }
-
     // 标记验证码为已使用
     await client.query(
       'UPDATE email_verification_codes SET used = true WHERE id = $1',
@@ -49,7 +44,7 @@ export async function POST(request: Request) {
 
     // 获取用户信息
     const userResult = await client.query(
-      'SELECT id, email, name, avatar FROM users WHERE email = $1',
+      'SELECT id, email, name, avatar, email_verified FROM users WHERE email = $1',
       [email]
     )
 
@@ -62,6 +57,15 @@ export async function POST(request: Request) {
 
     const user = userResult.rows[0]
 
+    // 标记邮箱为已验证（如果还未验证）
+    if (!user.email_verified) {
+      await client.query(
+        'UPDATE users SET email_verified = NOW() WHERE id = $1',
+        [user.id]
+      )
+      console.log(`✅ 邮箱已验证: ${email}`)
+    }
+
     return NextResponse.json({
       success: true,
       message: "验证成功",
@@ -69,7 +73,8 @@ export async function POST(request: Request) {
         id: user.id,
         email: user.email,
         name: user.name,
-        avatar: user.avatar
+        avatar: user.avatar,
+        emailVerified: true
       }
     })
   } catch (error) {

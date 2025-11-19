@@ -2,28 +2,35 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // 强制HTTPS跳转
-  const proto = request.headers.get('x-forwarded-proto')
+  // 获取用户地理位置
+  const country = request.geo?.country || 
+                  (process.env.NODE_ENV === 'development' ? 'CN' : 'US')
   
-  if (proto === 'http') {
-    const httpsUrl = request.nextUrl.clone()
-    httpsUrl.protocol = 'https:'
-    return NextResponse.redirect(httpsUrl, 301)
-  }
-
-  return NextResponse.next()
+  // 判断是否为中国用户
+  const region = country === 'CN' ? 'CN' : 'INTL'
+  
+  // 创建响应
+  const response = NextResponse.next()
+  
+  // 设置Cookie（24小时有效）
+  response.cookies.set('user_region', region, {
+    maxAge: 60 * 60 * 24,
+    path: '/',
+    sameSite: 'lax'
+  })
+  
+  // 同时设置Header供服务端组件使用
+  response.headers.set('x-user-region', region)
+  response.headers.set('x-user-country', country)
+  
+  return response
 }
 
-// 匹配所有路径
+// 配置需要运行middleware的路径
 export const config = {
   matcher: [
-    /*
-     * 匹配所有请求路径，除了以下开头的：
-     * - api (API routes)
-     * - _next/static (静态文件)
-     * - _next/image (图片优化文件)
-     * - favicon.ico (网站图标)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+    '/pricing',
+    '/api/payment/:path*',
+    '/api/credits/:path*'
+  ]
 }

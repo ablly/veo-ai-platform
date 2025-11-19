@@ -77,22 +77,20 @@ export async function POST(req: NextRequest) {
 
     // 生成6位验证码
     const code = Math.floor(100000 + Math.random() * 900000).toString()
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5分钟后过期
 
     console.log(`📱 准备发送验证码到 ${phone}`)
 
     // 调用腾讯云短信服务发送验证码
     const smsResult = await sendVerificationCode(phone, code)
 
-    // 记录发送结果到数据库
+    // 记录发送结果到数据库，使用数据库时间生成过期时间（5分钟后）
     await client.query(
       `INSERT INTO phone_verification_codes 
        (phone, code, expires_at, send_status, send_error, tencent_request_id, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+       VALUES ($1, $2, NOW() + INTERVAL '5 minutes', $3, $4, $5, NOW())`,
       [
         phone,
         code,
-        expiresAt,
         smsResult.success ? 'sent' : 'failed',
         smsResult.errorMessage || null,
         smsResult.requestId || null

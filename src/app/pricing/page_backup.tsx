@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Star, Crown, Award, Zap, CreditCard, Gift, Globe } from "lucide-react"
+import { CheckCircle, Star, Crown, Award, Zap, CreditCard, Gift } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
@@ -15,19 +15,14 @@ interface CreditPackage {
   credits: number
   price: number
   originalPrice: number
-  usdPrice: number | null
-  stripePriceId: string | null
   features: string[]
   isPopular: boolean
   isActive: boolean
-  region: string
 }
 
 export default function PricingPage() {
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [loading, setLoading] = useState(true)
-  const [region, setRegion] = useState<'CN' | 'INTL'>('INTL')
-  const [manualRegion, setManualRegion] = useState<'CN' | 'INTL' | null>(null)
   const { data: session } = useSession()
   const router = useRouter()
 
@@ -41,7 +36,6 @@ export default function PricingPage() {
       const data = await response.json()
       if (data.success) {
         setPackages(data.packages.filter((pkg: CreditPackage) => pkg.isActive && pkg.price > 0))
-        setRegion(data.region || 'INTL')
       }
     } catch (error) {
       console.error('获取套餐失败:', error)
@@ -50,61 +44,32 @@ export default function PricingPage() {
     }
   }
 
-  const currentRegion = manualRegion || region
-
-  const handlePurchase = async (pkg: CreditPackage) => {
+  const handlePurchase = async (packageId: string) => {
     if (!session) {
       router.push('/login')
       return
     }
 
     try {
-      if (currentRegion === 'CN') {
-        // 使用支付宝
-        const response = await fetch('/api/payment/alipay/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ packageId: pkg.id })
-        })
+      // 调用支付宝支付接口
+      const response = await fetch('/api/payment/alipay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageId })
+      })
 
-        const data = await response.json()
-        
-        if (data.success && data.paymentUrl) {
-          window.location.href = data.paymentUrl
-        } else {
-          alert(data.message || '创建订单失败，请稍后重试')
-        }
+      const data = await response.json()
+      
+      if (data.success && data.paymentUrl) {
+        // 跳转到支付宝收银台
+        window.location.href = data.paymentUrl
       } else {
-        // 使用Stripe
-        if (!pkg.stripePriceId) {
-          alert('该套餐暂不支持国际支付')
-          return
-        }
-
-        const response = await fetch('/api/payment/stripe/create-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ packageId: pkg.id })
-        })
-
-        const data = await response.json()
-        
-        if (data.success && data.url) {
-          window.location.href = data.url
-        } else {
-          alert(data.message || 'Failed to create checkout session')
-        }
+        alert(data.message || '创建订单失败，请稍后重试')
       }
     } catch (error) {
       console.error('购买失败:', error)
-      alert(currentRegion === 'CN' ? '购买失败，请稍后重试' : 'Purchase failed, please try again')
+      alert('购买失败，请稍后重试')
     }
-  }
-
-  const toggleRegion = () => {
-    const newRegion = currentRegion === 'CN' ? 'INTL' : 'CN'
-    setManualRegion(newRegion)
-    document.cookie = `user_region=${newRegion}; path=/; max-age=86400`
   }
 
   const getGradientClass = (index: number) => {
@@ -115,23 +80,6 @@ export default function PricingPage() {
       "from-orange-400 to-red-500"
     ]
     return gradients[index % gradients.length]
-  }
-
-  const formatPrice = (pkg: CreditPackage) => {
-    if (currentRegion === 'CN') {
-      return `¥${pkg.price}`
-    } else {
-      return `$${pkg.usdPrice || 0}`
-    }
-  }
-
-  const formatOriginalPrice = (pkg: CreditPackage) => {
-    if (currentRegion === 'CN') {
-      return `¥${pkg.originalPrice}`
-    } else {
-      const usdOriginal = pkg.usdPrice ? pkg.usdPrice * (pkg.originalPrice / pkg.price) : 0
-      return `$${usdOriginal.toFixed(2)}`
-    }
   }
 
   if (loading) {
@@ -154,46 +102,25 @@ export default function PricingPage() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full mb-6">
             <Zap className="w-4 h-4 text-yellow-400" />
-            <span className="text-white/80 text-sm">
-              {currentRegion === 'CN' ? '灵活的积分套餐' : 'Flexible Credit Packages'}
-            </span>
+            <span className="text-white/80 text-sm">灵活的积分套餐</span>
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-            {currentRegion === 'CN' ? '选择适合您的' : 'Choose Your Perfect'}
-            <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-              {currentRegion === 'CN' ? ' 创作套餐' : ' Plan'}
-            </span>
+            选择适合您的
+            <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent"> 创作套餐</span>
           </h1>
           
           <p className="text-xl text-white/70 max-w-3xl mx-auto leading-relaxed">
-            {currentRegion === 'CN' 
-              ? '从个人创作者到企业用户，我们为每个创作需求提供完美的解决方案。使用VEO AI，让您的创意无限可能。'
-              : 'From individual creators to enterprise users, we provide the perfect solution for every creative need. With VEO AI, make your creativity limitless.'
-            }
+            从个人创作者到企业用户，我们为每个创作需求提供完美的解决方案。
+            <br />使用VEO AI，让您的创意无限可能。
           </p>
 
-          {/* Region Toggle Button */}
-          <div className="mt-8 flex justify-center gap-4 flex-wrap">
-            <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-full">
-              <Gift className="w-5 h-5 text-green-400" />
-              <span className="text-green-300 text-sm font-medium">
-                {currentRegion === 'CN' 
-                  ? '新用户注册即送10积分，立即体验AI视频生成'
-                  : 'New users get 10 free credits to experience AI video generation'
-                }
-              </span>
-            </div>
-            
-            <button
-              onClick={toggleRegion}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full transition-all"
-            >
-              <Globe className="w-5 h-5 text-white" />
-              <span className="text-white text-sm font-medium">
-                {currentRegion === 'CN' ? '切换到国际支付' : 'Switch to Alipay'}
-              </span>
-            </button>
+          {/* New User Bonus Banner */}
+          <div className="mt-8 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-full">
+            <Gift className="w-5 h-5 text-green-400" />
+            <span className="text-green-300 text-sm font-medium">
+              新用户注册即送10积分，立即体验AI视频生成
+            </span>
           </div>
         </motion.div>
 
@@ -215,7 +142,7 @@ export default function PricingPage() {
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-4 py-2 rounded-full text-sm font-bold flex items-center">
                       <Crown className="w-4 h-4 mr-1" />
-                      {currentRegion === 'CN' ? '最受欢迎' : 'Most Popular'}
+                      最受欢迎
                     </div>
                   </div>
                 )}
@@ -233,21 +160,17 @@ export default function PricingPage() {
                       <div className="flex items-center justify-center gap-2 mb-1">
                         {pkg.originalPrice > pkg.price && (
                           <span className="text-white/40 line-through text-lg">
-                            {formatOriginalPrice(pkg)}
+                            ¥{pkg.originalPrice}
                           </span>
                         )}
-                        <span className="text-4xl font-bold">{formatPrice(pkg)}</span>
+                        <span className="text-4xl font-bold">¥{pkg.price}</span>
                       </div>
-                      <p className="text-white/50 text-sm">
-                        {currentRegion === 'CN' ? '一次性付费' : 'One-time payment'}
-                      </p>
+                      <p className="text-white/50 text-sm">一次性付费</p>
                     </div>
                     
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/30 rounded-lg">
                       <Award className="w-4 h-4 text-yellow-400" />
-                      <span className="text-yellow-300 font-medium">
-                        {pkg.credits} {currentRegion === 'CN' ? '积分' : 'Credits'}
-                      </span>
+                      <span className="text-yellow-300 font-medium">{pkg.credits} 积分</span>
                     </div>
                   </CardHeader>
 
@@ -262,19 +185,19 @@ export default function PricingPage() {
                     </ul>
 
                     <Button 
-                      onClick={() => handlePurchase(pkg)}
+                      onClick={() => handlePurchase(pkg.id)}
                       className={`w-full ${pkg.isPopular ? 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold' : 'bg-white/10 hover:bg-white/20 border border-white/20'}`}
                       size="lg"
                     >
                       {pkg.isPopular ? (
                         <>
                           <Star className="w-4 h-4 mr-2" />
-                          {currentRegion === 'CN' ? '立即购买' : 'Buy Now'}
+                          立即购买
                         </>
                       ) : (
                         <>
                           <CreditCard className="w-4 h-4 mr-2" />
-                          {currentRegion === 'CN' ? '立即购买' : 'Buy Now'}
+                          立即购买
                         </>
                       )}
                     </Button>
@@ -292,32 +215,24 @@ export default function PricingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          <h2 className="text-3xl font-bold text-white mb-12">
-            {currentRegion === 'CN' ? '为什么选择VEO AI？' : 'Why Choose VEO AI?'}
-          </h2>
+          <h2 className="text-3xl font-bold text-white mb-12">为什么选择VEO AI？</h2>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             {[
               {
                 icon: Zap,
-                title: currentRegion === 'CN' ? '真实物理运动' : 'Realistic Physics',
-                description: currentRegion === 'CN' 
-                  ? '基于物理引擎的真实运动模拟，让视频更加自然流畅'
-                  : 'Physics-based motion simulation for natural and smooth videos'
+                title: "真实物理运动",
+                description: "基于物理引擎的真实运动模拟，让视频更加自然流畅"
               },
               {
                 icon: Star,
-                title: currentRegion === 'CN' ? '高级镜头控制' : 'Advanced Camera Control',
-                description: currentRegion === 'CN'
-                  ? '专业级镜头运动控制，实现电影级视觉效果'
-                  : 'Professional camera motion control for cinematic visual effects'
+                title: "高级镜头控制",
+                description: "专业级镜头运动控制，实现电影级视觉效果"
               },
               {
                 icon: Award,
-                title: currentRegion === 'CN' ? '极速生成' : 'Lightning Fast',
-                description: currentRegion === 'CN'
-                  ? '先进的AI算法，快速生成高质量视频内容'
-                  : 'Advanced AI algorithms for rapid high-quality video generation'
+                title: "极速生成",
+                description: "先进的AI算法，快速生成高质量视频内容"
               }
             ].map((feature, index) => (
               <motion.div
@@ -344,12 +259,10 @@ export default function PricingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
         >
-          <h2 className="text-3xl font-bold text-white text-center mb-12">
-            {currentRegion === 'CN' ? '常见问题' : 'Frequently Asked Questions'}
-          </h2>
+          <h2 className="text-3xl font-bold text-white text-center mb-12">常见问题</h2>
           
           <div className="space-y-6">
-            {(currentRegion === 'CN' ? [
+            {[
               {
                 question: "积分有有效期吗？",
                 answer: "积分有效期按照购买的积分套餐的规定时间计算，请及时使用。"
@@ -360,22 +273,10 @@ export default function PricingPage() {
               },
               {
                 question: "支持哪些支付方式？",
-                answer: "国内用户支持支付宝支付，海外用户支持Stripe信用卡支付。"
-              }
-            ] : [
-              {
-                question: "Do credits expire?",
-                answer: "Credits expire according to the package validity period. Please use them in time."
+                answer: "目前仅支持支付宝支付。"
               },
-              {
-                question: "Do I own the generated videos?",
-                answer: "Yes, you own full copyright of generated videos and can use them commercially."
-              },
-              {
-                question: "What payment methods are supported?",
-                answer: "We support Stripe for international payments (credit/debit cards) and Alipay for Chinese users."
-              }
-            ]).map((faq, index) => (
+              
+            ].map((faq, index) => (
               <motion.div
                 key={index}
                 className="p-6 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl"
@@ -393,3 +294,5 @@ export default function PricingPage() {
     </div>
   )
 }
+
+

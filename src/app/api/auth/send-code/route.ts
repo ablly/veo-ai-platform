@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { pool } from "@/lib/db"
 import { sendVerificationEmail } from "@/lib/email"
 import { logger } from "@/lib/logger"
+import { validateEmail } from "@/lib/email-validator"
 
 export async function POST(request: Request) {
   const client = await pool.connect()
@@ -18,11 +19,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // 验证邮箱格式
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    // 验证邮箱（包括格式和黑名单检查）
+    const validation = validateEmail(email)
+    if (!validation.valid) {
+      logger.warn('邮箱验证失败', { email, error: validation.error })
       return NextResponse.json(
-        { error: "邮箱格式不正确" },
+        { error: validation.error },
         { status: 400 }
       )
     }
@@ -58,10 +60,7 @@ export async function POST(request: Request) {
     // 生成6位数字验证码
     const code = Math.floor(100000 + Math.random() * 900000).toString()
     
-    // 验证码有效期5分钟
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
-    
-    logger.info('生成验证码', { email, code, expiresAt })
+    logger.info('生成验证码', { email, code })
 
     // 清除该邮箱之前未使用的验证码
     await client.query(
@@ -69,11 +68,11 @@ export async function POST(request: Request) {
       [email]
     )
 
-    // 保存验证码到数据库
+    // 保存验证码到数据库，使用数据库时间生成过期时间（5分钟后）
     await client.query(
       `INSERT INTO email_verification_codes (email, code, expires_at, created_at)
-       VALUES ($1, $2, $3, NOW())`,
-      [email, code, expiresAt]
+       VALUES ($1, $2, NOW() + INTERVAL '5 minutes', NOW())`,
+      [email, code]
     )
 
     // 发送验证码邮件

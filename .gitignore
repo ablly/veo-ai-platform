@@ -36,12 +36,21 @@ yarn-error.log*
 .env.local
 .env*.local
 
+# 文档文件（不提交到GitHub）
+/docs/
+*.md
+!README.md
+
 # 支付宝配置敏感信息
 MY_ALIPAY_CONFIG.md
 
 # 临时测试文件
+*.txt
 1.txt
 2.txt
+diagnose-smtp.js
+test-smtp-connection.js
+setup-email-notifications.js
 
 # vercel
 .vercel

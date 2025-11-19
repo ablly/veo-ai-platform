@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-// import { signIn } from "next-auth/react" // 移除微信注册
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import Link from "next/link"
@@ -10,26 +9,116 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AnimatedBackground } from "@/components/ui/animated-background"
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Zap, User, Phone } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Zap, User, Phone, Shield } from "lucide-react"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
+    emailCode: "",
     password: "",
     confirmPassword: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSendingCode, setIsSendingCode] = useState(false)
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [countdown, setCountdown] = useState(0)
+  const [codeCountdown, setCodeCountdown] = useState(0)
+  const [emailVerified, setEmailVerified] = useState(false)
   const router = useRouter()
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }))
+    // 如果修改了邮箱，重置验证状态
+    if (field === 'email') {
+      setEmailVerified(false)
+    }
+  }
+
+  // 发送邮箱验证码
+  const handleSendEmailCode = async () => {
+    if (!formData.email) {
+      setError("请输入邮箱地址")
+      return
+    }
+
+    setIsSendingCode(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/auth/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "发送验证码失败")
+      }
+
+      // 开始倒计时
+      setCodeCountdown(60)
+      const timer = setInterval(() => {
+        setCodeCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      setError("")
+      alert("验证码已发送到您的邮箱，请查收")
+    } catch (error) {
+      setError((error as Error).message)
+    } finally {
+      setIsSendingCode(false)
+    }
+  }
+
+  // 验证邮箱验证码
+  const handleVerifyEmailCode = async () => {
+    if (!formData.emailCode) {
+      setError("请输入邮箱验证码")
+      return
+    }
+
+    setIsVerifyingCode(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          code: formData.emailCode,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "验证码验证失败")
+      }
+
+      setEmailVerified(true)
+      setError("")
+      alert("邮箱验证成功！请继续完成注册")
+    } catch (error) {
+      setError((error as Error).message)
+      setEmailVerified(false)
+    } finally {
+      setIsVerifyingCode(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +126,13 @@ export default function RegisterPage() {
     setIsLoading(true)
     setError("")
     setSuccess(false)
+
+    // 检查邮箱是否已验证
+    if (!emailVerified) {
+      setError("请先验证邮箱")
+      setIsLoading(false)
+      return
+    }
 
     // 表单验证
     if (formData.password !== formData.confirmPassword) {
@@ -188,24 +284,17 @@ export default function RegisterPage() {
 
             <CardContent className="space-y-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* 邮箱验证 */}
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-white">姓名</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                    <Input
-                      id="name"
-                      type="text"
-                      value={formData.name}
-                      onChange={handleInputChange("name")}
-                      className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                      placeholder="输入您的姓名"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-white">邮箱地址</Label>
+                  <Label htmlFor="email" className="text-white flex items-center gap-2">
+                    邮箱地址
+                    {emailVerified && (
+                      <span className="text-green-400 text-xs flex items-center gap-1">
+                        <Shield className="w-3 h-3" />
+                        已验证
+                      </span>
+                    )}
+                  </Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
                     <Input
@@ -216,72 +305,133 @@ export default function RegisterPage() {
                       className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
                       placeholder="输入您的邮箱"
                       required
+                      disabled={emailVerified}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-white">手机号码</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
-                      className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                      placeholder="输入您的手机号码"
-                      maxLength={11}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-white">密码</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={handleInputChange("password")}
-                      className="pl-10 pr-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                      placeholder="设置您的密码（6位以上）"
-                      required
-                    />
-                    <button
+                {/* 邮箱验证码 */}
+                {!emailVerified && (
+                  <div className="space-y-2">
+                    <Label htmlFor="emailCode" className="text-white">邮箱验证码</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                        <Input
+                          id="emailCode"
+                          type="text"
+                          value={formData.emailCode}
+                          onChange={handleInputChange("emailCode")}
+                          className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
+                          placeholder="输入6位验证码"
+                          maxLength={6}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleSendEmailCode}
+                        disabled={isSendingCode || codeCountdown > 0 || !formData.email}
+                        className="bg-white/10 hover:bg-white/20 text-white border border-white/30 whitespace-nowrap"
+                        variant="outline"
+                      >
+                        {isSendingCode ? "发送中..." : codeCountdown > 0 ? `${codeCountdown}秒` : "发送验证码"}
+                      </Button>
+                    </div>
+                    <Button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+                      onClick={handleVerifyEmailCode}
+                      disabled={isVerifyingCode || !formData.emailCode}
+                      className="w-full bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-500/30"
+                      variant="outline"
                     >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                      {isVerifyingCode ? "验证中..." : "验证邮箱"}
+                    </Button>
                   </div>
-                </div>
+                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-white">确认密码</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange("confirmPassword")}
-                      className="pl-10 pr-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                      placeholder="再次输入密码"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
+                {/* 其他信息 - 只有邮箱验证后才显示 */}
+                {emailVerified && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-white">姓名</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                        <Input
+                          id="name"
+                          type="text"
+                          value={formData.name}
+                          onChange={handleInputChange("name")}
+                          className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
+                          placeholder="输入您的姓名"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-white">手机号码</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
+                          className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
+                          placeholder="输入您的手机号码"
+                          maxLength={11}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-white">密码</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={handleInputChange("password")}
+                          className="pl-10 pr-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
+                          placeholder="设置您的密码（6位以上）"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword" className="text-white">确认密码</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                        <Input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={formData.confirmPassword}
+                          onChange={handleInputChange("confirmPassword")}
+                          className="pl-10 pr-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
+                          placeholder="再次输入密码"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {error && (
                   <motion.div
@@ -294,21 +444,23 @@ export default function RegisterPage() {
                   </motion.div>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold py-3 text-lg"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <motion.div
-                      className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    />
-                  ) : (
-                    "创建账户"
-                  )}
-                </Button>
+                {emailVerified && (
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold py-3 text-lg"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <motion.div
+                        className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      />
+                    ) : (
+                      "创建账户"
+                    )}
+                  </Button>
+                )}
               </form>
 
               <div className="text-center space-y-4">
