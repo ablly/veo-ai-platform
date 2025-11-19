@@ -275,10 +275,7 @@ export default function PricingPage() {
                 question: "支持哪些支付方式？",
                 answer: "目前仅支持支付宝支付。"
               },
-              {
-                question: "可以退款吗？",
-                answer: "虚拟产品一经售出概不退换。"
-              }
+              
             ].map((faq, index) => (
               <motion.div
                 key={index}

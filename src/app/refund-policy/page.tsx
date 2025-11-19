@@ -125,7 +125,7 @@ export default function RefundPolicyPage() {
               
               <h3 className="text-xl font-semibold text-gray-800 mb-3">2.1 Refundable Situations</h3>
               <ul className="list-disc pl-6 mb-4 text-gray-700 space-y-2">
-                <li>Within 7 days of purchase and no credits have been used</li>
+                <li>Within 14 days of purchase and no credits have been used</li>
                 <li>Technical failures preventing normal service use (verified by us)</li>
                 <li>Duplicate or erroneous purchases (must apply within 24 hours)</li>
                 <li>Payment successful but credits not received (verified by us)</li>
@@ -134,7 +134,7 @@ export default function RefundPolicyPage() {
               <h3 className="text-xl font-semibold text-gray-800 mb-3">2.2 Non-Refundable Situations</h3>
               <ul className="list-disc pl-6 mb-4 text-gray-700 space-y-2">
                 <li>Credits have been partially or fully used</li>
-                <li>More than 7 days since purchase</li>
+                <li>More than 14 days since purchase</li>
                 <li>User-related reasons (operational errors, dissatisfaction with results, etc.)</li>
                 <li>Promotional or discounted packages (unless required by law)</li>
                 <li>Account suspended or violation of terms of service</li>
@@ -147,7 +147,7 @@ export default function RefundPolicyPage() {
                 <li>
                   <strong>Submit Request:</strong>
                   <ul className="list-disc pl-6 mt-2 space-y-1">
-                    <li>Email: support@veo-ai.site</li>
+                    <li>Email: 3533912007@qq.com</li>
                     <li>Subject: Refund Request - [Order Number]</li>
                     <li>Include: Order number, purchase date, reason for refund</li>
                   </ul>
