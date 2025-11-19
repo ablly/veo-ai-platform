@@ -1085,6 +1085,7 @@ export default function HomePage() {
             <div className="flex items-center space-x-8 text-white/70">
               <Link href="/privacy" className="hover:text-white transition-colors">隐私政策</Link>
               <Link href="/terms" className="hover:text-white transition-colors">服务条款</Link>
+              <Link href="/refund-policy" className="hover:text-white transition-colors">退款政策</Link>
               <a href="#" className="hover:text-white transition-colors">帮助中心</a>
               <Link href="/contact" className="hover:text-white transition-colors">联系我们</Link>
             </div>
