@@ -46,14 +46,23 @@ export async function POST(request: Request) {
       
       const newUser = newUserResult.rows[0]
       
-      // 给新用户初始化积分账户
+      // 给新用户初始化积分账户并赠送10积分
+      const bonusCredits = 10
       await client.query(
         `INSERT INTO user_credit_accounts (user_id, available_credits, total_credits, used_credits, frozen_credits, created_at, updated_at)
-         VALUES ($1, 0, 0, 0, 0, NOW(), NOW())`,
-        [newUser.id]
+         VALUES ($1, $2, $2, 0, 0, NOW(), NOW())`,
+        [newUser.id, bonusCredits]
       )
       
-      console.log(`✅ 新用户自动注册: ${email}`)
+      // 记录积分交易
+      await client.query(
+        `INSERT INTO credit_transactions 
+         (user_id, transaction_type, credit_amount, balance_before, balance_after, description, created_at) 
+         VALUES ($1, 'BONUS', $2, 0, $2, '新用户注册赠送 - 可体验视频生成', NOW())`,
+        [newUser.id, bonusCredits]
+      )
+      
+      console.log(`✅ 新用户自动注册: ${email}, 赠送积分: ${bonusCredits}`)
       userResult = newUserResult
     }
 

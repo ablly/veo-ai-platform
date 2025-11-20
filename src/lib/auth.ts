@@ -80,35 +80,70 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        const client = await pool.connect()
+        
         try {
-          // 调用验证码验证API
-          const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/verify-code`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: credentials.email,
-              code: credentials.code
-            })
-          })
+          // 直接查询数据库验证验证码
+          const codeResult = await client.query(
+            `SELECT id, email, code, expires_at, used 
+             FROM email_verification_codes 
+             WHERE email = $1 
+               AND code = $2 
+               AND used = false 
+               AND expires_at > NOW()
+             ORDER BY created_at DESC 
+             LIMIT 1`,
+            [credentials.email, credentials.code]
+          )
 
-          const data = await response.json()
-
-          if (response.ok && data.success) {
-            console.log("✅ 邮箱验证码登录成功:", data.user.email)
-            return {
-              id: data.user.id,
-              email: data.user.email,
-              name: data.user.name,
-              image: data.user.avatar, // NextAuth 使用 image 字段
-              avatar: data.user.avatar,
-            }
-          } else {
-            console.log("❌ 邮箱验证码登录失败:", data.error)
+          if (codeResult.rows.length === 0) {
+            console.log("❌ 邮箱验证码无效或已过期")
             return null
+          }
+
+          const verificationCode = codeResult.rows[0]
+
+          // 标记验证码为已使用
+          await client.query(
+            'UPDATE email_verification_codes SET used = true WHERE id = $1',
+            [verificationCode.id]
+          )
+
+          // 获取用户信息
+          const userResult = await client.query(
+            'SELECT id, email, name, avatar, email_verified FROM users WHERE email = $1',
+            [credentials.email]
+          )
+
+          if (userResult.rows.length === 0) {
+            console.log("❌ 用户不存在")
+            return null
+          }
+
+          const user = userResult.rows[0]
+
+          // 标记邮箱为已验证（如果还未验证）
+          if (!user.email_verified) {
+            await client.query(
+              'UPDATE users SET email_verified = NOW() WHERE id = $1',
+              [user.id]
+            )
+          }
+
+          console.log("✅ 邮箱验证码登录成功:", user.email)
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.avatar, // NextAuth 使用 image 字段
+            avatar: user.avatar,
           }
         } catch (error) {
           console.error("❌ 邮箱验证码登录错误:", error)
           return null
+        } finally {
+          client.release()
         }
       }
     }),

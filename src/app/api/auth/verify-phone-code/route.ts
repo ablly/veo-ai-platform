@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       user = newUserResult.rows[0]
 
       // 给新用户赠送积分
-      const bonusCredits = CREDIT_CONFIG.NEW_USER_BONUS
+      const bonusCredits = CREDIT_CONFIG.WELCOME_CREDITS
       await client.query(
         `INSERT INTO user_credit_accounts 
          (user_id, total_credits, available_credits, used_credits, frozen_credits, created_at, updated_at) 
