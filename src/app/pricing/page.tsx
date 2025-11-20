@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Star, Crown, Award, Zap, CreditCard, Gift, Globe } from "lucide-react"
+import { CheckCircle, Star, Crown, Award, Zap, CreditCard, Gift, Globe, X, AlertCircle } from "lucide-react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface CreditPackage {
   id: string
@@ -28,12 +28,25 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true)
   const [region, setRegion] = useState<'CN' | 'INTL'>('INTL')
   const [manualRegion, setManualRegion] = useState<'CN' | 'INTL' | null>(null)
+  const [showCanceledAlert, setShowCanceledAlert] = useState(false)
   const { data: session } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     fetchPackages()
-  }, [])
+    
+    // 检查是否有 canceled 参数
+    const canceled = searchParams.get('canceled')
+    if (canceled === 'true') {
+      setShowCanceledAlert(true)
+      // 3秒后自动隐藏提示
+      const timer = setTimeout(() => {
+        setShowCanceledAlert(false)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams])
 
   const fetchPackages = async () => {
     try {
@@ -144,6 +157,42 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+      {/* 取消支付提示 */}
+      <AnimatePresence>
+        {showCanceledAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4"
+          >
+            <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm border border-orange-300/50 rounded-xl shadow-2xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-semibold mb-1">
+                    {currentRegion === 'CN' ? '支付已取消' : 'Payment Canceled'}
+                  </h3>
+                  <p className="text-white/90 text-sm">
+                    {currentRegion === 'CN' 
+                      ? '您可以重新选择适合的套餐继续购买' 
+                      : 'You can choose another package to continue'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCanceledAlert(false)}
+                  className="flex-shrink-0 text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="container mx-auto px-4 py-20">
         {/* Header */}
         <motion.div
