@@ -134,7 +134,7 @@ export default function PricingContent() {
     if (currentRegion === 'CN') {
       return `¥${pkg.price}`
     } else {
-      return `${pkg.usdPrice || 0}`
+      return `$${pkg.usdPrice || 0}`
     }
   }
 
@@ -143,7 +143,7 @@ export default function PricingContent() {
       return `¥${pkg.originalPrice}`
     } else {
       const usdOriginal = pkg.usdPrice ? pkg.usdPrice * (pkg.originalPrice / pkg.price) : 0
-      return `${usdOriginal.toFixed(2)}`
+      return `$${usdOriginal.toFixed(2)}`
     }
   }
 
