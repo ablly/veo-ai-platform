@@ -64,20 +64,31 @@ export async function POST(request: NextRequest) {
 
       const userId = orderCheck.rows[0].user_id
 
-      // 更新订单状态
+      // 获取实际支付金额（考虑优惠券折扣）
+      const actualAmount = session.amount_total ? (session.amount_total / 100).toFixed(2) : null
+      const discountAmount = session.total_details?.amount_discount ? (session.total_details.amount_discount / 100).toFixed(2) : 0
+      
+      console.log(`💰 支付金额信息:`, {
+        原价: session.amount_subtotal ? (session.amount_subtotal / 100) : 0,
+        折扣: discountAmount,
+        实付: actualAmount
+      })
+
+      // 更新订单状态和实际支付金额
       await client.query(
         `UPDATE credit_orders 
          SET status = $1,
              stripe_payment_intent_id = $2,
+             payment_amount = COALESCE($3, payment_amount),
              payment_time = NOW(),
              updated_at = NOW()
-         WHERE id = $3`,
-        ['COMPLETED', session.payment_intent, orderId]
+         WHERE id = $4`,
+        ['COMPLETED', session.payment_intent, actualAmount, orderId]
       )
 
       // 获取订单信息
       const orderResult = await client.query(
-        `SELECT co.credits_amount, cp.name as package_name, u.email
+        `SELECT co.credits_amount, co.payment_amount, co.order_number, cp.name as package_name, u.email
          FROM credit_orders co
          JOIN credit_packages cp ON co.package_id = cp.id
          JOIN users u ON co.user_id = u.id
@@ -86,6 +97,11 @@ export async function POST(request: NextRequest) {
       )
 
       const order = orderResult.rows[0]
+      
+      // 记录优惠券信息（如果有）
+      if (session.total_details?.amount_discount && session.total_details.amount_discount > 0) {
+        console.log(`🎟️ 使用了优惠券，折扣金额: $${discountAmount}`)
+      }
 
       // 增加用户积分
       await client.query(
