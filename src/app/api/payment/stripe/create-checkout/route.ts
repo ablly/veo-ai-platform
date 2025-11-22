@@ -95,9 +95,8 @@ export async function POST(request: NextRequest) {
       // 创建Stripe Checkout Session
       const checkoutSession = await stripe.checkout.sessions.create({
         mode: 'payment',
-        // 使用自动支付方式，Stripe会根据账户配置和用户地区自动显示可用的支付方式
-        // 包括：信用卡、微信支付、支付宝、Apple Pay、Google Pay、Link等
-        payment_method_types: ['card', 'wechat_pay', 'alipay', 'link'],
+        // 只启用信用卡支付，避免微信支付和支付宝的配置问题
+        payment_method_types: ['card'],
         line_items: [
           {
             price: pkg.stripe_price_id,

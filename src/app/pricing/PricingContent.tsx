@@ -74,17 +74,31 @@ export default function PricingContent() {
     try {
       if (currentRegion === 'CN') {
         // 使用支付宝
+        console.log('🛒 创建支付宝订单...', { packageId: pkg.id, packageName: pkg.name })
+        
         const response = await fetch('/api/payment/alipay/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ packageId: pkg.id })
         })
 
+        console.log('📡 支付宝接口响应状态:', response.status)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('❌ 支付宝接口错误:', errorText)
+          alert(`创建订单失败 (${response.status}): ${errorText}`)
+          return
+        }
+
         const data = await response.json()
+        console.log('📦 支付宝接口响应:', data)
         
         if (data.success && data.paymentUrl) {
+          console.log('✅ 跳转到支付宝支付页面')
           window.location.href = data.paymentUrl
         } else {
+          console.error('❌ 创建订单失败:', data.message)
           alert(data.message || '创建订单失败，请稍后重试')
         }
       } else {
@@ -94,23 +108,39 @@ export default function PricingContent() {
           return
         }
 
+        console.log('🛒 创建Stripe订单...', { packageId: pkg.id, packageName: pkg.name })
+
         const response = await fetch('/api/payment/stripe/create-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ packageId: pkg.id })
         })
 
+        console.log('📡 Stripe接口响应状态:', response.status)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('❌ Stripe接口错误:', errorText)
+          alert(`Failed to create checkout (${response.status}): ${errorText}`)
+          return
+        }
+
         const data = await response.json()
+        console.log('📦 Stripe接口响应:', data)
         
         if (data.success && data.url) {
+          console.log('✅ 跳转到Stripe支付页面')
           window.location.href = data.url
         } else {
+          console.error('❌ 创建订单失败:', data.message)
           alert(data.message || 'Failed to create checkout session')
         }
       }
     } catch (error) {
-      console.error('购买失败:', error)
-      alert(currentRegion === 'CN' ? '购买失败，请稍后重试' : 'Purchase failed, please try again')
+      console.error('❌ 购买失败:', error)
+      alert(currentRegion === 'CN' 
+        ? `购买失败: ${error instanceof Error ? error.message : '未知错误'}` 
+        : `Purchase failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
