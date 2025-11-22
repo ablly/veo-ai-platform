@@ -2,8 +2,11 @@
 
 import { useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import StripeSuccessContent from "./StripeSuccessContent"
-import AlipaySuccessContent from "../alipay/success/AlipaySuccessContent"
+import dynamic from "next/dynamic"
+
+// 动态导入组件避免循环依赖
+const StripeSuccessContent = dynamic(() => import("./StripeSuccessContent"), { ssr: false })
+const AlipaySuccessContent = dynamic(() => import("../alipay/success/AlipaySuccessContent"), { ssr: false })
 
 /**
  * 统一支付成功页面
