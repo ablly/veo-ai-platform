@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   try {
-
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
@@ -24,7 +23,7 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1
 
     if (search) {
-      whereClause += ` AND (co.id::text ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex} OR co.payment_id ILIKE $${paramIndex})`
+      whereClause += ` AND (co.order_number ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex})`
       queryParams.push(`%${search}%`)
       paramIndex++
     }
@@ -39,17 +38,17 @@ export async function GET(request: NextRequest) {
     const ordersQuery = `
       SELECT 
         co.id,
+        co.order_number,
         co.user_id,
         u.email as user_email,
         u.name as user_name,
         cp.name as package_name,
-        cp.credits,
+        cp.credits as order_credits,
         co.payment_amount,
         co.payment_method,
         co.status,
         co.created_at,
-        co.payment_time,
-        co.order_number
+        co.payment_time
       FROM credit_orders co
       LEFT JOIN users u ON co.user_id = u.id
       LEFT JOIN credit_packages cp ON co.package_id = cp.id
@@ -65,22 +64,28 @@ export async function GET(request: NextRequest) {
     const countQuery = `
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN co.status = 'COMPLETED' THEN co.payment_amount ELSE 0 END) as total_revenue
+        SUM(CASE WHEN co.status = 'PAID' OR co.status = 'COMPLETED' THEN co.payment_amount ELSE 0 END) as total_revenue,
+        COUNT(CASE WHEN co.status = 'PENDING' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN co.status = 'PAID' OR co.status = 'COMPLETED' THEN 1 END) as completed_count
       FROM credit_orders co
       LEFT JOIN users u ON co.user_id = u.id
       ${whereClause}
     `
     const countResult = await pool.query(countQuery, queryParams.slice(0, -2))
-    const totalOrders = parseInt(countResult.rows[0].total)
+    const totalOrders = parseInt(countResult.rows[0].total || '0')
     const totalRevenue = parseFloat(countResult.rows[0].total_revenue || '0')
+    const pendingCount = parseInt(countResult.rows[0].pending_count || '0')
+    const completedCount = parseInt(countResult.rows[0].completed_count || '0')
     const totalPages = Math.ceil(totalOrders / limit)
 
     logger.info("管理员查询订单列表", {
-      page,
-      limit,
-      search,
-      status,
-      total_orders: totalOrders
+      context: {
+        page,
+        limit,
+        search,
+        status,
+        total_orders: totalOrders
+      }
     })
 
     return NextResponse.json({
@@ -88,12 +93,20 @@ export async function GET(request: NextRequest) {
       orders: ordersResult.rows,
       totalOrders,
       totalRevenue,
+      pendingCount,
+      completedCount,
       totalPages,
       currentPage: page
     })
 
   } catch (error) {
-    logger.error("查询订单列表失败", { error })
-    return createErrorResponse(Errors.INTERNAL_SERVER_ERROR, "查询订单列表失败")
+    logger.error("查询订单列表失败", { 
+      error: error instanceof Error ? error : new Error(String(error))
+    })
+    console.error("订单列表API错误:", error)
+    return NextResponse.json(
+      { success: false, message: "查询订单列表失败", error: String(error) },
+      { status: 500 }
+    )
   }
 }
