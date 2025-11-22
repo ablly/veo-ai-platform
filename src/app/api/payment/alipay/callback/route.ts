@@ -114,18 +114,6 @@ export async function POST(req: NextRequest) {
         )
         console.log('✅ 订单状态已更新')
 
-        // 记录支付宝交易号（如果字段存在）
-        try {
-          await client.query(
-            `UPDATE credit_orders 
-             SET alipay_trade_no = $1
-             WHERE order_number = $2`,
-            [trade_no, out_trade_no]
-          )
-        } catch (error) {
-          console.warn('⚠️ alipay_trade_no 字段不存在，跳过更新')
-        }
-
         // 查询套餐信息以获取有效期
         const packageResult = await client.query(
           'SELECT id, name, credits FROM credit_packages WHERE id = $1',
