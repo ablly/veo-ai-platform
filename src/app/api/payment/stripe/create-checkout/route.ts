@@ -103,6 +103,8 @@ export async function POST(request: NextRequest) {
             quantity: 1,
           },
         ],
+        // 启用优惠券输入
+        allow_promotion_codes: true,
         // 移除 customer_email 让用户可以输入任意邮箱
         // customer_email: session.user.email,
         client_reference_id: orderId,
