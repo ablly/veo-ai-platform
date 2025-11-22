@@ -202,9 +202,9 @@ export const EmailTemplates = {
 
             <p>💡 <strong>温馨提示：</strong></p>
             <ul>
-              <li>每个视频消耗 15 积分</li>
               <li>套餐到期后剩余积分将清零</li>
               <li>我们会在到期前7天提醒您</li>
+              <li>请尽快使用您的积分</li>
             </ul>
 
             <a href="${process.env.NEXTAUTH_URL}/generate" class="btn">立即开始生成视频</a>
@@ -987,18 +987,38 @@ export const EmailService = {
     // 从环境变量获取管理员邮箱
     const adminEmail = process.env.ADMIN_EMAIL
     
+    console.log('🔍 检查管理员邮箱配置...')
+    console.log('   ADMIN_EMAIL:', adminEmail || '❌ 未配置')
+    console.log('   SMTP_USER:', process.env.SMTP_USER || '❌ 未配置')
+    console.log('   SMTP_HOST:', process.env.SMTP_HOST || '❌ 未配置')
+    
     if (!adminEmail) {
+      const errorMsg = 'ADMIN_EMAIL environment variable not set'
+      console.error('❌', errorMsg)
       logger.error('管理员邮箱未配置', { 
-        error: new Error('ADMIN_EMAIL environment variable not set')
+        error: new Error(errorMsg)
       })
       return { success: false, error: 'Admin email not configured' }
     }
 
+    console.log('📧 准备发送管理员订单通知...')
+    console.log('   收件人:', adminEmail)
+    console.log('   订单号:', params.orderNumber)
+    console.log('   金额: ¥', params.amount)
+
     const template = EmailTemplates.adminOrderNotification(params)
-    return sendEmail({
+    const result = await sendEmail({
       to: adminEmail,
       subject: template.subject,
       html: template.html
     })
+    
+    if (result.success) {
+      console.log('✅ 管理员邮件发送成功, MessageID:', result.messageId)
+    } else {
+      console.error('❌ 管理员邮件发送失败:', result.error)
+    }
+    
+    return result
   }
 }

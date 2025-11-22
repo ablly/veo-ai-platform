@@ -209,27 +209,52 @@ export async function POST(req: NextRequest) {
         })
 
         // 发送订单通知给管理员（异步，不影响支付流程）
-        EmailService.sendAdminOrderNotification({
-          orderNumber: out_trade_no,
-          userName: user.name || user.email.split('@')[0],
-          userEmail: user.email,
-          packageName: packageInfo.name,
-          credits: packageInfo.credits,
-          amount: parseFloat(order.payment_amount),
-          buyerId: buyer_id || 'N/A',
-          alipayTradeNo: trade_no,
-          paidAt: new Date().toLocaleString('zh-CN', { 
-            timeZone: 'Asia/Shanghai',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
+        try {
+          console.log('📧 开始发送管理员订单通知邮件...')
+          console.log('📧 管理员邮箱:', process.env.ADMIN_EMAIL)
+          
+          const adminEmailResult = await EmailService.sendAdminOrderNotification({
+            orderNumber: out_trade_no,
+            userName: user.name || user.email.split('@')[0],
+            userEmail: user.email,
+            packageName: packageInfo.name,
+            credits: packageInfo.credits,
+            amount: parseFloat(order.payment_amount),
+            buyerId: buyer_id || 'N/A',
+            alipayTradeNo: trade_no,
+            paidAt: new Date().toLocaleString('zh-CN', { 
+              timeZone: 'Asia/Shanghai',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })
           })
-        }).catch(error => {
-          logger.error('发送管理员订单通知失败', { error })
-        })
+          
+          if (adminEmailResult.success) {
+            console.log('✅ 管理员订单通知邮件发送成功')
+            logger.info('管理员订单通知邮件发送成功', { 
+              context: {
+                orderNumber: out_trade_no,
+                messageId: adminEmailResult.messageId
+              }
+            })
+          } else {
+            console.error('❌ 管理员订单通知邮件发送失败:', adminEmailResult.error)
+            logger.error('管理员订单通知邮件发送失败', { 
+              error: new Error(adminEmailResult.error || 'Unknown error'),
+              context: { orderNumber: out_trade_no }
+            })
+          }
+        } catch (error) {
+          console.error('❌ 发送管理员订单通知时出错:', error)
+          logger.error('发送管理员订单通知时出错', { 
+            error: error instanceof Error ? error : new Error(String(error)),
+            context: { orderNumber: out_trade_no }
+          })
+        }
 
         // 记录详细的支付成功日志
         const paymentLog = {
