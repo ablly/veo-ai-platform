@@ -3,7 +3,7 @@ import Stripe from "stripe"
 import pool from "@/lib/db"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-11-20.acacia"
+  apiVersion: "2025-11-17.clover"
 })
 
 export async function POST(request: NextRequest) {
@@ -129,7 +129,66 @@ export async function POST(request: NextRequest) {
         ]
       )
 
-      console.log(`✅ Stripe支付成功 - 订单: ${orderId}, 用户: ${order.email}, 积分: ${order.credits_amount}`)
+      // 查询用户信息用于发送邮件
+      const userResult = await client.query(
+        'SELECT email, name FROM users WHERE id = $1',
+        [userId]
+      )
+      const user = userResult.rows[0]
+
+      // 查询套餐信息
+      const packageResult = await client.query(
+        'SELECT name, credits FROM credit_packages WHERE id = (SELECT package_id FROM credit_orders WHERE id = $1)',
+        [orderId]
+      )
+      const packageInfo = packageResult.rows[0]
+
+      // 计算过期时间
+      let validityDays = 30
+      if (packageInfo.name.includes('新手')) validityDays = 7
+      if (packageInfo.name.includes('专业')) validityDays = 90
+      if (packageInfo.name.includes('企业')) validityDays = 180
+      
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + validityDays)
+
+      console.log(`✅ Stripe支付成功 - 订单: ${orderId}, 用户: ${user.email}, 积分: ${order.credits_amount}`)
+
+      // 发送购买成功邮件给用户（异步）
+      const { EmailService } = await import('@/lib/email')
+      EmailService.sendPurchaseSuccess({
+        email: user.email,
+        userName: user.name || user.email.split('@')[0],
+        packageName: packageInfo.name,
+        credits: packageInfo.credits,
+        expiresAt: expiresAt.toLocaleDateString('zh-CN'),
+        amount: parseFloat(order.payment_amount)
+      }).catch(error => {
+        console.error('发送购买成功邮件失败:', error)
+      })
+
+      // 发送订单通知给管理员（异步）
+      EmailService.sendAdminOrderNotification({
+        orderNumber: order.order_number,
+        userName: user.name || user.email.split('@')[0],
+        userEmail: user.email,
+        packageName: packageInfo.name,
+        credits: packageInfo.credits,
+        amount: parseFloat(order.payment_amount),
+        buyerId: session.customer as string || 'N/A',
+        alipayTradeNo: session.payment_intent as string || 'N/A',
+        paidAt: new Date().toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
+      }).catch(error => {
+        console.error('发送管理员订单通知失败:', error)
+      })
     }
 
     // 处理payment_intent.succeeded事件（额外保障）

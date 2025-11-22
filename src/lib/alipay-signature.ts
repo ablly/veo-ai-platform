@@ -33,8 +33,18 @@ export function verifyAlipaySignature(params: any): boolean {
 
     console.log('🔍 待验证签名字符串:', signString)
 
-    // 构建完整的公钥格式
-    const publicKey = `-----BEGIN PUBLIC KEY-----\n${ALIPAY_PUBLIC_KEY}\n-----END PUBLIC KEY-----`
+    // 构建完整的公钥格式（处理可能已包含换行符的情况）
+    let publicKey = ALIPAY_PUBLIC_KEY.trim()
+    
+    // 如果公钥不包含 BEGIN/END 标记，添加标准格式
+    if (!publicKey.includes('-----BEGIN')) {
+      // 移除所有空白字符
+      publicKey = publicKey.replace(/\s/g, '')
+      // 添加标准的 PEM 格式头尾
+      publicKey = `-----BEGIN PUBLIC KEY-----\n${publicKey}\n-----END PUBLIC KEY-----`
+    }
+    
+    console.log('🔑 使用的公钥格式:', publicKey.substring(0, 50) + '...')
     
     // 验证签名
     const verifier = crypto.createVerify('RSA-SHA256')

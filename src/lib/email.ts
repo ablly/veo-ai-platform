@@ -436,6 +436,152 @@ export const EmailTemplates = {
     `
   }),
 
+  // 支付失败通知（用户）
+  paymentFailed: (data: {
+    userName: string
+    packageName: string
+    amount: number
+    orderNumber: string
+    failReason?: string
+  }) => ({
+    subject: `❌ 支付失败通知 - ${data.packageName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .error-box { background: #f8d7da; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #dc3545; }
+          .btn { display: inline-block; padding: 12px 30px; background: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>❌ 支付失败</h1>
+          </div>
+          <div class="content">
+            <p>尊敬的 <strong>${data.userName}</strong>，您好！</p>
+            
+            <div class="error-box">
+              <p><strong>您的支付未能完成：</strong></p>
+              <p>订单号：${data.orderNumber}</p>
+              <p>套餐：${data.packageName}</p>
+              <p>金额：¥${data.amount.toFixed(2)}</p>
+              ${data.failReason ? `<p>失败原因：${data.failReason}</p>` : ''}
+            </div>
+
+            <p><strong>可能的原因：</strong></p>
+            <ul>
+              <li>支付超时</li>
+              <li>余额不足</li>
+              <li>银行卡限额</li>
+              <li>网络问题</li>
+            </ul>
+
+            <p>您可以重新尝试购买，或联系客服获取帮助。</p>
+
+            <a href="${process.env.NEXTAUTH_URL}/pricing" class="btn">重新购买</a>
+
+            <div class="footer">
+              <p>如有疑问，请联系客服</p>
+              <p>VEO AI - 让创意生动起来</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
+  // 管理员支付失败通知
+  adminPaymentFailed: (data: {
+    orderNumber: string
+    userName: string
+    userEmail: string
+    packageName: string
+    amount: number
+    failReason?: string
+    paymentMethod: string
+  }) => ({
+    subject: `⚠️ 支付失败通知 - ${data.packageName} - ${data.orderNumber}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .warning-box { background: #fff3cd; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #ffc107; }
+          .info-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          .info-table td { padding: 12px; border-bottom: 1px solid #eee; }
+          .info-table td:first-child { font-weight: bold; color: #ffc107; width: 140px; }
+          .footer { text-align: center; margin-top: 30px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ 支付失败通知</h1>
+          </div>
+          <div class="content">
+            <div class="warning-box">
+              <h3>用户支付失败</h3>
+              <table class="info-table">
+                <tr>
+                  <td>订单号</td>
+                  <td>${data.orderNumber}</td>
+                </tr>
+                <tr>
+                  <td>用户名称</td>
+                  <td>${data.userName}</td>
+                </tr>
+                <tr>
+                  <td>用户邮箱</td>
+                  <td>${data.userEmail}</td>
+                </tr>
+                <tr>
+                  <td>套餐名称</td>
+                  <td>${data.packageName}</td>
+                </tr>
+                <tr>
+                  <td>支付金额</td>
+                  <td>¥${data.amount.toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td>支付方式</td>
+                  <td>${data.paymentMethod}</td>
+                </tr>
+                ${data.failReason ? `<tr><td>失败原因</td><td>${data.failReason}</td></tr>` : ''}
+              </table>
+            </div>
+
+            <p><strong>💡 建议操作：</strong></p>
+            <ul>
+              <li>关注用户是否重新尝试支付</li>
+              <li>如用户联系客服，可查看此订单详情</li>
+              <li>检查支付通道是否正常</li>
+            </ul>
+
+            <div class="footer">
+              <p>此邮件由系统自动发送</p>
+              <p>VEO AI - 管理员通知系统</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  }),
+
   // 管理员订单通知模板
   adminOrderNotification: (data: {
     orderNumber: string
@@ -777,6 +923,50 @@ export const EmailService = {
     const template = EmailTemplates.adminAlert(params)
     return sendEmail({
       to: params.adminEmail,
+      subject: template.subject,
+      html: template.html
+    })
+  },
+
+  // 发送支付失败邮件（用户）
+  sendPaymentFailed: async (params: {
+    email: string
+    userName: string
+    packageName: string
+    amount: number
+    orderNumber: string
+    failReason?: string
+  }) => {
+    const template = EmailTemplates.paymentFailed(params)
+    return sendEmail({
+      to: params.email,
+      subject: template.subject,
+      html: template.html
+    })
+  },
+
+  // 发送管理员支付失败通知
+  sendAdminPaymentFailed: async (params: {
+    orderNumber: string
+    userName: string
+    userEmail: string
+    packageName: string
+    amount: number
+    failReason?: string
+    paymentMethod: string
+  }) => {
+    const adminEmail = process.env.ADMIN_EMAIL
+    
+    if (!adminEmail) {
+      logger.error('管理员邮箱未配置', { 
+        error: new Error('ADMIN_EMAIL environment variable not set')
+      })
+      return { success: false, error: 'Admin email not configured' }
+    }
+
+    const template = EmailTemplates.adminPaymentFailed(params)
+    return sendEmail({
+      to: adminEmail,
       subject: template.subject,
       html: template.html
     })

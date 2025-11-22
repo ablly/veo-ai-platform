@@ -95,6 +95,7 @@ export const metadata: Metadata = {
   verification: {
     google: "dg6AkvEoozvbl71VAMdEASHbA893w9ia76Xcu9VdoZY", // Google Search Console验证码
     // baidu: "", // 百度站长验证码（通过other添加）
+    // bing: "", // Bing Webmaster Tools验证码（在下面other中添加）
   },
   
   // 其他meta标签
@@ -108,6 +109,9 @@ export const metadata: Metadata = {
     
     // 搜狗
     'sogou_site_verification': '', // 搜狗站长验证码
+    
+    // Bing/Microsoft
+    'msvalidate.01': '', // Bing Webmaster Tools验证码
     
     // 移动端优化
     'mobile-web-app-capable': 'yes',

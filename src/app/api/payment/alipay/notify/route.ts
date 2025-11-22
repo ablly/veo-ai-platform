@@ -6,20 +6,40 @@ import { verifyAlipaySignature, validatePaymentAmount, validateTradeStatus } fro
 
 /**
  * 支付宝异步通知回调
- * POST /api/payment/alipay/notify
+ * GET /api/payment/alipay/notify - 支付宝验证URL可用性
+ * POST /api/payment/alipay/notify - 支付宝异步通知
  */
+
+// 处理支付宝的GET请求（验证URL可用性）
+export async function GET(req: NextRequest) {
+  console.log('📥 收到支付宝GET验证请求')
+  return NextResponse.json({ success: true, message: 'Alipay notify endpoint is ready' })
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    // 支付宝发送的是表单数据，不是JSON
+    const text = await req.text()
+    console.log('📥 收到支付宝回调原始数据:', text)
     
-    console.log('📥 收到支付宝回调:', JSON.stringify(body, null, 2))
+    // 解析表单数据为对象
+    const params = new URLSearchParams(text)
+    const body: any = {}
+    params.forEach((value, key) => {
+      body[key] = value
+    })
+    
+    console.log('📥 解析后的支付宝回调参数:', JSON.stringify(body, null, 2))
     
     // 1. 验证支付宝签名（必须！）
+    console.log('🔐 开始验证支付宝签名...')
     const isValid = verifyAlipaySignature(body)
     if (!isValid) {
       console.error('❌ 支付宝签名验证失败，拒绝处理')
+      console.error('❌ 回调参数:', JSON.stringify(body, null, 2))
       return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 400 })
     }
+    console.log('✅ 支付宝签名验证通过')
 
     const {
       out_trade_no, // 订单号
@@ -30,10 +50,12 @@ export async function POST(req: NextRequest) {
     } = body
 
     // 2. 验证交易状态
+    console.log(`🔍 验证交易状态: ${trade_status}`)
     if (!validateTradeStatus(trade_status)) {
       console.log(`ℹ️ 交易状态不是成功状态: ${trade_status}，返回成功但不处理`)
       return NextResponse.json({ success: true, message: 'Trade not completed' })
     }
+    console.log('✅ 交易状态验证通过')
 
     // 开始数据库事务
     const client = await pool.connect()
@@ -42,6 +64,7 @@ export async function POST(req: NextRequest) {
         await client.query('BEGIN')
 
         // 查询订单信息
+        console.log(`🔍 查询订单: ${out_trade_no}`)
         const orderResult = await client.query(
           'SELECT * FROM credit_orders WHERE order_number = $1',
           [out_trade_no]
@@ -49,36 +72,45 @@ export async function POST(req: NextRequest) {
 
         if (orderResult.rows.length === 0) {
           await client.query('ROLLBACK')
+          console.error(`❌ 订单不存在: ${out_trade_no}`)
           return NextResponse.json({ success: false, message: 'Order not found' })
         }
 
         const order = orderResult.rows[0]
+        console.log(`✅ 找到订单: ${out_trade_no}, 当前状态: ${order.status}`)
 
         // 3. 验证支付金额（关键！）
         const orderAmount = parseFloat(order.payment_amount)
         const paidAmount = parseFloat(total_amount)
         
+        console.log(`💰 验证支付金额: 订单金额=${orderAmount}元, 实付金额=${paidAmount}元`)
         if (!validatePaymentAmount(orderAmount, paidAmount)) {
           await client.query('ROLLBACK')
           console.error(`❌ 支付金额不匹配: 订单${out_trade_no}, 订单金额${orderAmount}元, 实付${paidAmount}元`)
           return NextResponse.json({ success: false, message: 'Amount mismatch' }, { status: 400 })
         }
+        console.log('✅ 支付金额验证通过')
 
         // 4. 检查订单是否已处理（幂等性）
-        if (order.status === 'PAID') {
+        if (order.status === 'PAID' || order.status === 'COMPLETED') {
           await client.query('COMMIT')
-          console.log(`✅ 订单已处理: ${out_trade_no}`)
+          console.log(`✅ 订单已处理，跳过重复处理: ${out_trade_no}`)
           return NextResponse.json({ success: true, message: 'Already processed' })
         }
+        
+        console.log(`🚀 开始处理订单: ${out_trade_no}`)
 
-        // 5. 更新订单状态
+        // 5. 更新订单状态为已支付
+        console.log(`📝 更新订单状态为 PAID: ${out_trade_no}`)
         await client.query(
           `UPDATE credit_orders 
            SET status = 'PAID', 
+               payment_time = NOW(),
                updated_at = NOW()
            WHERE order_number = $1`,
           [out_trade_no]
         )
+        console.log('✅ 订单状态已更新')
 
         // 记录支付宝交易号（如果字段存在）
         try {
@@ -110,6 +142,7 @@ export async function POST(req: NextRequest) {
         expiresAt.setDate(expiresAt.getDate() + validityDays)
 
         // 给用户充值积分并设置过期时间
+        console.log(`💎 开始充值积分: 用户ID=${order.user_id}, 积分=${packageInfo.credits}`)
         await client.query(
           `INSERT INTO user_credit_accounts (
             user_id, available_credits, total_credits, used_credits, frozen_credits,
@@ -127,6 +160,7 @@ export async function POST(req: NextRequest) {
              updated_at = NOW()`,
           [order.user_id, packageInfo.credits, expiresAt, packageInfo.name]
         )
+        console.log(`✅ 积分充值成功: ${packageInfo.credits}积分已到账`)
 
         // 记录积分变动
         await client.query(
