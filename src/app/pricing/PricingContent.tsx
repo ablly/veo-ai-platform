@@ -222,8 +222,20 @@ export default function PricingContent() {
             }
           </p>
 
+          {/* Current Payment Method Indicator */}
+          <div className="mt-6 flex justify-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded-full">
+              <span className="text-blue-300 text-sm">
+                {currentRegion === 'CN' 
+                  ? '当前支付方式：支付宝 💳'
+                  : 'Current Payment: Stripe (Credit Card) 💳'
+                }
+              </span>
+            </div>
+          </div>
+
           {/* Region Toggle Button */}
-          <div className="mt-8 flex justify-center gap-4 flex-wrap">
+          <div className="mt-4 flex justify-center gap-4 flex-wrap">
             <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-full">
               <Gift className="w-5 h-5 text-green-400" />
               <span className="text-green-300 text-sm font-medium">
@@ -236,12 +248,17 @@ export default function PricingContent() {
             
             <button
               onClick={toggleRegion}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full transition-all group"
             >
-              <Globe className="w-5 h-5 text-white" />
-              <span className="text-white text-sm font-medium">
-                {currentRegion === 'CN' ? '切换到国际支付' : 'Switch to Alipay'}
-              </span>
+              <Globe className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+              <div className="flex flex-col items-start">
+                <span className="text-white text-sm font-medium">
+                  {currentRegion === 'CN' ? '切换到国际支付 (Stripe)' : 'Switch to Alipay (支付宝)'}
+                </span>
+                <span className="text-white/60 text-xs">
+                  {currentRegion === 'CN' ? 'Credit Card Payment' : '国内用户推荐'}
+                </span>
+              </div>
             </button>
           </div>
         </motion.div>
