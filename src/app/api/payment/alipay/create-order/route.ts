@@ -190,7 +190,7 @@ async function createAlipayPayment(params: {
     
     const ALIPAY_GATEWAY = process.env.ALIPAY_GATEWAY || 'https://openapi.alipay.com/gateway.do'
     const NOTIFY_URL = process.env.NEXTAUTH_URL + '/api/payment/alipay/notify'
-    const RETURN_URL = process.env.NEXTAUTH_URL + '/credits'
+    const RETURN_URL = process.env.NEXTAUTH_URL + '/payment/alipay/success'
 
     if (!ALIPAY_APP_ID || !ALIPAY_PRIVATE_KEY) {
       console.error('❌ 支付宝配置缺失！请在.env中配置 ALIPAY_APP_ID 和 ALIPAY_PRIVATE_KEY')
