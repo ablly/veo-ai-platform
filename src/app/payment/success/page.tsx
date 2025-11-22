@@ -1,7 +1,7 @@
 import { Suspense } from "react"
-import StripeSuccessContent from "./StripeSuccessContent"
+import PaymentSuccessContent from "./PaymentSuccessContent"
 
-function StripeSuccessLoading() {
+function PaymentSuccessLoading() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -11,8 +11,8 @@ function StripeSuccessLoading() {
 
 export default function PaymentSuccessPage() {
   return (
-    <Suspense fallback={<StripeSuccessLoading />}>
-      <StripeSuccessContent />
+    <Suspense fallback={<PaymentSuccessLoading />}>
+      <PaymentSuccessContent />
     </Suspense>
   )
 }
