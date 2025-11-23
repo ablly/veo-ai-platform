@@ -63,11 +63,25 @@ export async function GET(request: NextRequest) {
 
       const order = result.rows[0]
 
+      // 计算实际到账积分（包含首单赠送）
+      // 查询该订单相关的所有积分交易记录
+      const transactionsResult = await client.query(
+        `SELECT SUM(credit_amount) as total_credits
+         FROM credit_transactions
+         WHERE related_order_id = $1 AND transaction_type IN ('PURCHASE', 'BONUS')`,
+        [orderId]
+      )
+      
+      // 实际到账积分 = 购买积分 + 赠送积分
+      const actualCredits = transactionsResult.rows[0]?.total_credits || order.credits_amount
+      
+      console.log(`💎 Stripe订单积分: 套餐${order.credits_amount}, 实际到账${actualCredits}`)
+
       return NextResponse.json({
         success: true,
         order: {
           orderNumber: order.order_number,
-          credits: order.credits_amount,
+          credits: parseInt(actualCredits), // 返回实际到账积分
           amount: parseFloat(order.payment_amount),
           status: order.status,
           packageName: order.package_name

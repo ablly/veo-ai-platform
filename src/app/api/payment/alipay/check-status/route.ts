@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
         co.payment_time,
         co.credits_amount,
         co.payment_amount,
+        co.user_id,
         cp.name as package_name,
         uca.package_expires_at
       FROM credit_orders co
@@ -58,6 +59,20 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // 计算实际到账积分（包含首单赠送）
+    // 查询该订单相关的所有积分交易记录
+    const transactionsResult = await pool.query(
+      `SELECT SUM(credit_amount) as total_credits
+       FROM credit_transactions
+       WHERE related_order_id = $1 AND transaction_type IN ('PURCHASE', 'BONUS')`,
+      [order.order_number]
+    )
+    
+    // 实际到账积分 = 购买积分 + 赠送积分
+    const actualCredits = transactionsResult.rows[0]?.total_credits || order.credits_amount
+    
+    console.log(`💎 订单积分: 套餐${order.credits_amount}, 实际到账${actualCredits}`)
+
     // 返回订单信息
     return NextResponse.json({
       success: true,
@@ -66,7 +81,7 @@ export async function GET(req: NextRequest) {
         orderNumber: order.order_number,
         status: order.status,
         packageName: order.package_name,
-        credits: order.credits_amount,
+        credits: parseInt(actualCredits), // 返回实际到账积分
         amount: parseFloat(order.payment_amount),
         paymentTime: order.payment_time,
         expiresAt: order.package_expires_at 
