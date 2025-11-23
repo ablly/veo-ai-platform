@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { pool } from "@/lib/db"
-import { sendEmail } from "@/lib/email"
+import { sendEmailWithResend, AdminEmailTemplates } from "@/lib/email-resend"
 import { createErrorResponse, Errors } from "@/lib/error-handler"
 import { logger } from "@/lib/logger"
 import { adminApiGuard } from "@/lib/admin-auth"
@@ -61,9 +61,6 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(Errors.badRequest(), "没有找到有效的收件人")
     }
 
-    // 生成邮件HTML
-    const emailHtml = generateEmailHtml(subject, content, templateType)
-
     // 发送邮件并记录结果
     const results = {
       total: recipientList.length,
@@ -72,13 +69,20 @@ export async function POST(request: NextRequest) {
       errors: [] as Array<{ email: string; error: string }>
     }
 
-    // 批量发送邮件
+    // 批量发送邮件（使用Resend）
     for (const recipient of recipientList) {
       try {
-        const result = await sendEmail({
-          to: recipient.email,
+        // 使用Resend邮件模板
+        const template = AdminEmailTemplates.customEmail({
           subject,
-          html: emailHtml.replace(/\{\{userName\}\}/g, recipient.name || '用户')
+          content,
+          userName: recipient.name || '用户'
+        })
+
+        const result = await sendEmailWithResend({
+          to: recipient.email,
+          subject: template.subject,
+          html: template.html
         })
 
         if (result.success) {
@@ -139,63 +143,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-
-// 生成邮件HTML
-function generateEmailHtml(subject: string, content: string, templateType: string): string {
-  const baseTemplate = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { 
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-          color: white; 
-          padding: 30px; 
-          text-align: center; 
-          border-radius: 10px 10px 0 0; 
-        }
-        .content { 
-          background: #f9f9f9; 
-          padding: 30px; 
-          border-radius: 0 0 10px 10px; 
-        }
-        .message { 
-          background: white; 
-          padding: 20px; 
-          margin: 20px 0; 
-          border-radius: 8px; 
-          border-left: 4px solid #667eea; 
-          white-space: pre-line;
-        }
-        .footer { 
-          text-align: center; 
-          margin-top: 30px; 
-          color: #999; 
-          font-size: 12px; 
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>${subject}</h1>
-          <p>VEO AI 官方通知</p>
-        </div>
-        <div class="content">
-          <p>尊敬的 <strong>{{userName}}</strong>，您好！</p>
-          <div class="message">${content}</div>
-          <div class="footer">
-            <p>此邮件由VEO AI管理员发送</p>
-            <p>VEO AI - 让创意生动起来</p>
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
-
-  return baseTemplate
-}

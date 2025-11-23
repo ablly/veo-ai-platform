@@ -8,7 +8,9 @@ import { VideoInput } from "@/components/generate/video-input"
 import { ThreeDLoader } from "@/components/ui/3d-loader"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Sparkles, LogIn, UserPlus, Download, Play } from "lucide-react"
+import { Sparkles, LogIn, UserPlus, Download, Play, Zap, AlertTriangle, CreditCard } from "lucide-react"
+import { useCreditMonitor } from "@/hooks/use-credit-monitor"
+import { CreditLowModal } from "@/components/ui/credit-low-modal"
 
 interface GenerationData {
   prompt: string
@@ -42,6 +44,16 @@ function GeneratePageContent() {
   const [generationProgress, setGenerationProgress] = useState(0)
   const [remixVideoInfo, setRemixVideoInfo] = useState<{prompt: string, videoId: string} | null>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout>()
+  
+  // 积分监控
+  const {
+    credits,
+    loading: creditsLoading,
+    showLowCreditModal,
+    setShowLowCreditModal,
+    refreshCredits,
+    isLowCredit
+  } = useCreditMonitor()
 
   // 处理续作功能：从URL参数获取remixFrom
   useEffect(() => {
@@ -126,6 +138,9 @@ function GeneratePageContent() {
       if (!response.ok) {
         throw new Error(data.error?.message || data.message || "生成失败")
       }
+      
+      // 生成成功后刷新积分
+      refreshCredits()
 
       // 轮询检查生成状态
       const taskId = data.taskId || data.data?.taskId
@@ -317,6 +332,85 @@ function GeneratePageContent() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-100">
       <AnimatedBackground />
+      
+      {/* 积分不足弹窗 */}
+      <CreditLowModal
+        credits={credits}
+        isOpen={showLowCreditModal}
+        onClose={() => setShowLowCreditModal(false)}
+      />
+      
+      {/* 积分显示条 */}
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-yellow-200/50 shadow-sm">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Zap className={`w-5 h-5 ${isLowCredit ? 'text-red-500' : 'text-yellow-500'}`} />
+                <span className="text-sm font-medium text-gray-700">
+                  剩余积分：
+                </span>
+                <span className={`text-lg font-bold ${isLowCredit ? 'text-red-600' : 'text-gray-900'}`}>
+                  {creditsLoading ? '...' : credits}
+                </span>
+              </div>
+              
+              {isLowCredit && (
+                <motion.div
+                  className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-400/30 rounded-full"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                  <span className="text-sm font-medium text-red-700">
+                    积分不足
+                  </span>
+                </motion.div>
+              )}
+            </div>
+            
+            <Button
+              onClick={() => router.push('/pricing')}
+              size="sm"
+              className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold"
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              快速充值
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      {/* 积分警告横幅 */}
+      {isLowCredit && (
+        <motion.div
+          className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-b-2 border-red-400/30"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-orange-500 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">积分即将用完</h3>
+                  <p className="text-sm text-gray-600">
+                    充值后可继续创作，首次充值额外赠送50%积分
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => router.push('/pricing')}
+                className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold"
+              >
+                立即充值
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      )}
       
       {/* Header Section */}
       <section className="relative container mx-auto px-4 py-12">
