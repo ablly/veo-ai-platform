@@ -44,6 +44,11 @@ const adminNavItems = [
     icon: Mail
   },
   {
+    name: "营销邮件",
+    href: "/admin/marketing-emails",
+    icon: Mail
+  },
+  {
     name: "系统设置",
     href: "/admin/settings",
     icon: Settings
