@@ -17,7 +17,6 @@ export function useCreditMonitor() {
     loading: true
   })
   const [showLowCreditModal, setShowLowCreditModal] = useState(false)
-  const [hasShownModal, setHasShownModal] = useState(false)
 
   // 获取用户积分
   const fetchCredits = async () => {
@@ -31,18 +30,22 @@ export function useCreditMonitor() {
       const data = await response.json()
 
       if (data.success) {
-        const credits = data.credits?.availableCredits || 0
+        const account = data.data?.account || data.credits || {}
+        const credits = account.available_credits || account.availableCredits || 0
+        
         setCreditInfo({
           availableCredits: credits,
-          totalCredits: data.credits?.totalCredits || 0,
+          totalCredits: account.total_credits || account.totalCredits || 0,
           loading: false
         })
 
         // 检查是否需要显示低积分提醒
-        // 积分 < 10 且本次会话还未显示过
-        if (credits < 10 && credits > 0 && !hasShownModal) {
+        // 积分 < 10 时自动显示
+        const shouldShow = credits < 10 && credits > 0
+        
+        if (shouldShow) {
           setShowLowCreditModal(true)
-          setHasShownModal(true)
+          console.log('💰 积分不足提醒：当前积分', credits)
         }
       }
     } catch (error) {
