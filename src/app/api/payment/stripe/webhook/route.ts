@@ -100,7 +100,24 @@ export async function POST(request: NextRequest) {
       
       // 记录优惠券信息（如果有）
       if (session.total_details?.amount_discount && session.total_details.amount_discount > 0) {
-        console.log(`🎟️ 使用了优惠券，折扣金额: $${discountAmount}`)
+        console.log(`🎟️ 使用了优惠券，折扣金额: ${discountAmount}`)
+      }
+
+      // 🎁 检查是否是首次充值（首单特惠）
+      const orderCountResult = await client.query(
+        `SELECT COUNT(*) as count FROM credit_orders 
+         WHERE user_id = $1 AND status = 'COMPLETED' AND id != $2`,
+        [userId, orderId]
+      )
+      const isFirstPurchase = parseInt(orderCountResult.rows[0].count) === 0
+      
+      // 计算积分（首单赠送50%）
+      let creditsToAdd = order.credits_amount
+      let bonusCredits = 0
+      if (isFirstPurchase) {
+        bonusCredits = Math.floor(order.credits_amount * 0.5)
+        creditsToAdd = order.credits_amount + bonusCredits
+        console.log(`🎁 首单特惠！赠送${bonusCredits}积分，总计${creditsToAdd}积分`)
       }
 
       // 增加用户积分
@@ -112,10 +129,10 @@ export async function POST(request: NextRequest) {
            total_credits = user_credit_accounts.total_credits + $2,
            available_credits = user_credit_accounts.available_credits + $2,
            updated_at = NOW()`,
-        [userId, order.credits_amount]
+        [userId, creditsToAdd]
       )
 
-      // 记录积分变动历史
+      // 记录积分变动历史 - 购买
       const balanceResult = await client.query(
         'SELECT available_credits FROM user_credit_accounts WHERE user_id = $1',
         [userId]
@@ -138,12 +155,39 @@ export async function POST(request: NextRequest) {
           userId,
           'PURCHASE',
           order.credits_amount,
-          currentBalance - order.credits_amount,
+          currentBalance - creditsToAdd,
           currentBalance,
           orderId,
           `购买${order.package_name}套餐 (Stripe)`
         ]
       )
+      
+      // 如果是首单，记录赠送积分
+      if (isFirstPurchase && bonusCredits > 0) {
+        await client.query(
+          `INSERT INTO credit_transactions (
+            user_id,
+            transaction_type,
+            credit_amount,
+            balance_before,
+            balance_after,
+            related_order_id,
+            package_id,
+            description,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, (SELECT package_id FROM credit_orders WHERE id = $6), $7, NOW())`,
+          [
+            userId,
+            'BONUS',
+            bonusCredits,
+            currentBalance - bonusCredits,
+            currentBalance,
+            orderId,
+            `首单特惠赠送（${order.package_name}）`
+          ]
+        )
+        console.log(`🎁 首单赠送记录已创建: ${bonusCredits}积分`)
+      }
 
       // 查询用户信息用于发送邮件
       const userResult = await client.query(
@@ -168,7 +212,7 @@ export async function POST(request: NextRequest) {
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + validityDays)
 
-      console.log(`✅ Stripe支付成功 - 订单: ${orderId}, 用户: ${user.email}, 积分: ${order.credits_amount}`)
+      console.log(`✅ Stripe支付成功 - 订单: ${orderId}, 用户: ${user.email}, 积分: ${creditsToAdd}`)
 
       // 发送购买成功邮件给用户（异步）
       const { EmailService } = await import('@/lib/email')
@@ -176,7 +220,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         userName: user.name || user.email.split('@')[0],
         packageName: packageInfo.name,
-        credits: packageInfo.credits,
+        credits: creditsToAdd,
         expiresAt: expiresAt.toLocaleDateString('zh-CN'),
         amount: parseFloat(order.payment_amount)
       }).catch(error => {
@@ -193,7 +237,7 @@ export async function POST(request: NextRequest) {
           userName: user.name || user.email.split('@')[0],
           userEmail: user.email,
           packageName: packageInfo.name,
-          credits: packageInfo.credits,
+          credits: creditsToAdd,
           amount: parseFloat(order.payment_amount),
           buyerId: session.customer as string || 'N/A',
           alipayTradeNo: session.payment_intent as string || 'N/A',

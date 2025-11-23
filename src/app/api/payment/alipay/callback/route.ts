@@ -122,6 +122,23 @@ export async function POST(req: NextRequest) {
         
         const packageInfo = packageResult.rows[0]
         
+        // 🎁 检查是否是首次充值（首单特惠）
+        const orderCountResult = await client.query(
+          `SELECT COUNT(*) as count FROM credit_orders 
+           WHERE user_id = $1 AND status IN ('PAID', 'COMPLETED') AND id != $2`,
+          [order.user_id, order.id]
+        )
+        const isFirstPurchase = parseInt(orderCountResult.rows[0].count) === 0
+        
+        // 计算积分（首单赠送50%）
+        let creditsToAdd = packageInfo.credits
+        let bonusCredits = 0
+        if (isFirstPurchase) {
+          bonusCredits = Math.floor(packageInfo.credits * 0.5)
+          creditsToAdd = packageInfo.credits + bonusCredits
+          console.log(`🎁 首单特惠！赠送${bonusCredits}积分，总计${creditsToAdd}积分`)
+        }
+        
         // 计算过期时间（新手7天、基础30天、专业90天、企业180天）
         let validityDays = 30 // 默认30天
         if (packageInfo.name.includes('新手')) validityDays = 7
@@ -132,7 +149,7 @@ export async function POST(req: NextRequest) {
         expiresAt.setDate(expiresAt.getDate() + validityDays)
 
         // 给用户充值积分并设置过期时间
-        console.log(`💎 开始充值积分: 用户ID=${order.user_id}, 积分=${packageInfo.credits}`)
+        console.log(`💎 开始充值积分: 用户ID=${order.user_id}, 积分=${creditsToAdd}`)
         await client.query(
           `INSERT INTO user_credit_accounts (
             user_id, available_credits, total_credits, used_credits, frozen_credits,
@@ -148,11 +165,11 @@ export async function POST(req: NextRequest) {
              is_expired = false,
              package_name = $4,
              updated_at = NOW()`,
-          [order.user_id, packageInfo.credits, expiresAt, packageInfo.name]
+          [order.user_id, creditsToAdd, expiresAt, packageInfo.name]
         )
-        console.log(`✅ 积分充值成功: ${packageInfo.credits}积分已到账`)
+        console.log(`✅ 积分充值成功: ${creditsToAdd}积分已到账`)
 
-        // 记录积分变动
+        // 记录积分变动 - 购买
         await client.query(
           `INSERT INTO credit_transactions (
             user_id, transaction_type, credit_amount, description, 
@@ -173,6 +190,31 @@ export async function POST(req: NextRequest) {
             order.id
           ]
         )
+        
+        // 如果是首单，记录赠送积分
+        if (isFirstPurchase && bonusCredits > 0) {
+          await client.query(
+            `INSERT INTO credit_transactions (
+              user_id, transaction_type, credit_amount, description, 
+              balance_before, balance_after, 
+              related_order_id, created_at
+            )
+            SELECT
+              $1, 'BONUS', $2, $3,
+              COALESCE(uca.available_credits, 0) - $2,
+              COALESCE(uca.available_credits, 0),
+              $4, NOW()
+            FROM user_credit_accounts uca
+            WHERE uca.user_id = $1`,
+            [
+              order.user_id,
+              bonusCredits,
+              `首单特惠赠送（${packageInfo.name}）`,
+              order.id
+            ]
+          )
+          console.log(`🎁 首单赠送记录已创建: ${bonusCredits}积分`)
+        }
 
         // 查询用户信息用于发送邮件
         const userResult = await client.query(

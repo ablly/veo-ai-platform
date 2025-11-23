@@ -30,8 +30,8 @@ export function GlobalCreditMonitor() {
           const availableCredits = data.credits.available
           setCredits(availableCredits)
           
-          // 如果积分不足15（无法生成视频），显示提醒
-          if (availableCredits < 15 && !dismissed) {
+          // 如果积分低于3，显示提醒
+          if (availableCredits < 3 && !dismissed) {
             setShowLowCreditAlert(true)
           }
         }
@@ -82,17 +82,17 @@ export function GlobalCreditMonitor() {
                   <div className="w-4 h-4 border border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <span className={`font-bold text-lg ${
-                    credits !== null && credits < 15 ? 'text-red-400' : 'text-yellow-400'
+                    credits !== null && credits < 3 ? 'text-red-400' : 'text-yellow-400'
                   }`}>
                     {credits !== null ? credits : '--'}
                   </span>
                 )}
               </div>
               
-              {credits !== null && credits < 15 && (
+              {credits !== null && credits < 3 && (
                 <div className="flex items-center space-x-2 text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4" />
-                  <span>积分不足，无法生成视频</span>
+                  <span>积分不足</span>
                 </div>
               )}
             </div>
@@ -166,7 +166,7 @@ export function GlobalCreditMonitor() {
                   您当前剩余 <span className="text-red-400 font-bold text-xl">{credits}</span> 积分
                 </p>
                 <p className="text-white/60 text-sm mb-6">
-                  生成视频需要至少 15 积分，请充值后继续创作
+                  请充值后继续创作
                 </p>
 
                 {/* 优惠提示 */}

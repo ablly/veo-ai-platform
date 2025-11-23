@@ -266,12 +266,38 @@ export default function PricingContent() {
 
           {/* Region Toggle Button */}
           <div className="mt-4 flex justify-center gap-4 flex-wrap">
+            {/* 首单特惠宣传 */}
+            <motion.div
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400/20 to-orange-500/20 border-2 border-yellow-400/50 rounded-full shadow-lg"
+              animate={{
+                scale: [1, 1.05, 1],
+                boxShadow: [
+                  "0 0 20px rgba(251, 191, 36, 0.3)",
+                  "0 0 30px rgba(251, 191, 36, 0.5)",
+                  "0 0 20px rgba(251, 191, 36, 0.3)"
+                ]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <Gift className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-300 text-sm font-bold">
+                {currentRegion === 'CN' 
+                  ? '🎁 首单特惠：首次充值额外赠送50%积分！'
+                  : '🎁 First Purchase Bonus: Get 50% Extra Credits!'
+                }
+              </span>
+            </motion.div>
+            
             <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-full">
               <Gift className="w-5 h-5 text-green-400" />
               <span className="text-green-300 text-sm font-medium">
                 {currentRegion === 'CN' 
-                  ? '新用户注册即送10积分，立即体验AI视频生成'
-                  : 'New users get 10 free credits to experience AI video generation'
+                  ? '新用户注册即送10积分'
+                  : 'New users get 10 free credits'
                 }
               </span>
             </div>
@@ -339,11 +365,24 @@ export default function PricingContent() {
                       </p>
                     </div>
                     
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/30 rounded-lg">
-                      <Award className="w-4 h-4 text-yellow-400" />
-                      <span className="text-yellow-300 font-medium">
-                        {pkg.credits} {currentRegion === 'CN' ? '积分' : 'Credits'}
-                      </span>
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border border-yellow-400/30 rounded-lg">
+                        <Award className="w-4 h-4 text-yellow-400" />
+                        <span className="text-yellow-300 font-medium">
+                          {pkg.credits} {currentRegion === 'CN' ? '积分' : 'Credits'}
+                        </span>
+                      </div>
+                      
+                      {/* 首单特惠提示 */}
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-400/20 to-blue-400/20 border border-green-400/30 rounded-lg">
+                        <Gift className="w-3 h-3 text-green-400" />
+                        <span className="text-green-300 text-xs font-medium">
+                          {currentRegion === 'CN' 
+                            ? `首单送${Math.floor(pkg.credits * 0.5)}积分` 
+                            : `+${Math.floor(pkg.credits * 0.5)} Bonus`
+                          }
+                        </span>
+                      </div>
                     </div>
                   </CardHeader>
 

@@ -315,9 +315,24 @@ export default function HomePage() {
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </button>
               {!session && (
-                <p className="text-white/90 text-sm bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                  🎁 新用户注册送10积分，立即免费生成视频
-                </p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-white/90 text-sm bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                    🎁 新用户注册送10积分
+                  </p>
+                  <motion.p
+                    className="text-yellow-300 text-sm font-bold bg-gradient-to-r from-yellow-400/20 to-orange-500/20 backdrop-blur-sm px-4 py-2 rounded-full border-2 border-yellow-400/50"
+                    animate={{
+                      scale: [1, 1.05, 1],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    ✨ 首单特惠：首次充值额外赠送50%积分
+                  </motion.p>
+                </div>
               )}
             </div>
           </motion.div>
