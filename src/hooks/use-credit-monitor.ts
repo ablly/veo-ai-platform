@@ -39,18 +39,10 @@ export function useCreditMonitor() {
         })
 
         // 检查是否需要显示低积分提醒
-        // 积分 < 3 且本次会话还未显示过
-        if (credits < 3 && credits > 0 && !hasShownModal) {
-          // 检查本地存储，避免频繁提醒
-          const lastShownTime = localStorage.getItem('creditLowModalLastShown')
-          const now = Date.now()
-          
-          // 如果从未显示过，或者距离上次显示超过24小时
-          if (!lastShownTime || now - parseInt(lastShownTime) > 24 * 60 * 60 * 1000) {
-            setShowLowCreditModal(true)
-            setHasShownModal(true)
-            localStorage.setItem('creditLowModalLastShown', now.toString())
-          }
+        // 积分 < 10 且本次会话还未显示过
+        if (credits < 10 && credits > 0 && !hasShownModal) {
+          setShowLowCreditModal(true)
+          setHasShownModal(true)
         }
       }
     } catch (error) {
@@ -78,7 +70,7 @@ export function useCreditMonitor() {
 
   // 手动触发低积分提醒
   const triggerLowCreditModal = () => {
-    if (creditInfo.availableCredits < 3) {
+    if (creditInfo.availableCredits < 10) {
       setShowLowCreditModal(true)
     }
   }
@@ -91,6 +83,6 @@ export function useCreditMonitor() {
     setShowLowCreditModal,
     refreshCredits,
     triggerLowCreditModal,
-    isLowCredit: creditInfo.availableCredits < 3 && creditInfo.availableCredits > 0
+    isLowCredit: creditInfo.availableCredits < 10 && creditInfo.availableCredits > 0
   }
 }
