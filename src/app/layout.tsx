@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider"
 import { ToastProvider } from "@/lib/toast-context"
 import { Navigation } from "@/components/layout/navigation"
-import { GlobalCreditMonitor } from "@/components/global-credit-monitor"
 import "./globals.css";
 import "./button-fix.css";
 
@@ -184,7 +183,6 @@ export default function RootLayout({
       >
         <ToastProvider>
           <AuthProvider>
-            <GlobalCreditMonitor />
             <Navigation />
             {children}
           </AuthProvider>
