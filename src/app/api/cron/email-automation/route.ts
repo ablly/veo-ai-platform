@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
 import { sendEmailWithResend } from '@/lib/email-resend'
 import { 
   creditLowEmail, 
@@ -7,6 +7,12 @@ import {
   firstPurchaseOfferEmail,
   lastChanceOfferEmail
 } from '@/lib/email-templates/marketing-templates'
+
+// 初始化 Supabase 客户端
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,266 +33,296 @@ export async function GET(request: NextRequest) {
       errors: [] as string[]
     }
 
-    // 1. 积分不足提醒（积分 < 3，且未发送过此类邮件）
-    const lowCreditUsers = await prisma.user.findMany({
-      where: {
-        emailUnsubscribed: false,
-        creditAccount: {
-          availableCredits: {
-            lt: 3,
-            gt: 0
+    // 1. 积分不足提醒（积分 < 10，且7天内未发送过此类邮件）
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    
+    const { data: lowCreditUsers, error: lowCreditError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        email,
+        name,
+        user_credit_accounts!inner(available_credits)
+      `)
+      .eq('email_unsubscribed', false)
+      .lt('user_credit_accounts.available_credits', 10)
+      .gt('user_credit_accounts.available_credits', 0)
+
+    if (lowCreditError) {
+      results.errors.push(`Query low credit users failed: ${lowCreditError.message}`)
+    } else if (lowCreditUsers) {
+      for (const user of lowCreditUsers) {
+        try {
+          if (!user.email) continue
+
+          // 检查7天内是否已发送过
+          const { data: recentLogs } = await supabase
+            .from('email_marketing_logs')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('email_type', 'credit_low')
+            .gte('sent_at', sevenDaysAgo)
+            .limit(1)
+
+          if (recentLogs && recentLogs.length > 0) {
+            continue // 7天内已发送过，跳过
           }
-        },
-        NOT: {
-          emailMarketingLogs: {
-            some: {
-              emailType: 'credit_low',
-              sentAt: {
-                gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7天内
-              }
-            }
-          }
-        }
-      },
-      include: {
-        creditAccount: true
-      }
-    })
 
-    for (const user of lowCreditUsers) {
-      try {
-        if (!user.email) continue
+          const credits = (user.user_credit_accounts as any)[0]?.available_credits || 0
 
-        const template = creditLowEmail({
-          userName: user.name || '用户',
-          credits: user.creditAccount?.availableCredits || 0
-        })
+          const template = creditLowEmail({
+            userName: user.name || '用户',
+            credits
+          })
 
-        const result = await sendEmailWithResend({
-          to: user.email,
-          subject: template.subject,
-          html: template.html
-        })
+          const result = await sendEmailWithResend({
+            to: user.email,
+            subject: template.subject,
+            html: template.html
+          })
 
-        if (result.success) {
-          await prisma.emailMarketingLog.create({
-            data: {
-              userId: user.id,
-              emailType: 'credit_low',
-              sentAt: new Date(),
+          if (result.success) {
+            // 记录发送日志
+            await supabase.from('email_marketing_logs').insert({
+              user_id: user.id,
+              email_type: 'credit_low',
+              sent_at: new Date().toISOString(),
               status: 'SENT',
-              messageId: result.messageId
-            }
-          })
+              message_id: result.messageId
+            })
 
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastMarketingEmailAt: new Date() }
-          })
+            // 更新用户最后营销邮件时间
+            await supabase
+              .from('users')
+              .update({ last_marketing_email_at: new Date().toISOString() })
+              .eq('id', user.id)
 
-          results.creditLow++
+            results.creditLow++
+          }
+        } catch (error) {
+          results.errors.push(`Credit low email failed for user ${user.id}: ${error}`)
         }
-      } catch (error) {
-        results.errors.push(`Credit low email failed for user ${user.id}: ${error}`)
       }
     }
 
-    // 2. 积分用完提醒（积分 = 0，且未发送过此类邮件）
-    const emptyCreditUsers = await prisma.user.findMany({
-      where: {
-        emailUnsubscribed: false,
-        creditAccount: {
-          availableCredits: 0
-        },
-        NOT: {
-          emailMarketingLogs: {
-            some: {
-              emailType: 'credit_empty',
-              sentAt: {
-                gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7天内
-              }
-            }
+    // 2. 积分用完提醒（积分 = 0，且7天内未发送过此类邮件）
+    const { data: emptyCreditUsers, error: emptyCreditError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        email,
+        name,
+        user_credit_accounts!inner(available_credits)
+      `)
+      .eq('email_unsubscribed', false)
+      .eq('user_credit_accounts.available_credits', 0)
+
+    if (emptyCreditError) {
+      results.errors.push(`Query empty credit users failed: ${emptyCreditError.message}`)
+    } else if (emptyCreditUsers) {
+      for (const user of emptyCreditUsers) {
+        try {
+          if (!user.email) continue
+
+          // 检查7天内是否已发送过
+          const { data: recentLogs } = await supabase
+            .from('email_marketing_logs')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('email_type', 'credit_empty')
+            .gte('sent_at', sevenDaysAgo)
+            .limit(1)
+
+          if (recentLogs && recentLogs.length > 0) {
+            continue
           }
-        }
-      }
-    })
 
-    for (const user of emptyCreditUsers) {
-      try {
-        if (!user.email) continue
+          const template = creditEmptyEmail({
+            userName: user.name || '用户'
+          })
 
-        const template = creditEmptyEmail({
-          userName: user.name || '用户'
-        })
+          const result = await sendEmailWithResend({
+            to: user.email,
+            subject: template.subject,
+            html: template.html
+          })
 
-        const result = await sendEmailWithResend({
-          to: user.email,
-          subject: template.subject,
-          html: template.html
-        })
-
-        if (result.success) {
-          await prisma.emailMarketingLog.create({
-            data: {
-              userId: user.id,
-              emailType: 'credit_empty',
-              sentAt: new Date(),
+          if (result.success) {
+            await supabase.from('email_marketing_logs').insert({
+              user_id: user.id,
+              email_type: 'credit_empty',
+              sent_at: new Date().toISOString(),
               status: 'SENT',
-              messageId: result.messageId
-            }
-          })
+              message_id: result.messageId
+            })
 
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastMarketingEmailAt: new Date() }
-          })
+            await supabase
+              .from('users')
+              .update({ last_marketing_email_at: new Date().toISOString() })
+              .eq('id', user.id)
 
-          results.creditEmpty++
+            results.creditEmpty++
+          }
+        } catch (error) {
+          results.errors.push(`Credit empty email failed for user ${user.id}: ${error}`)
         }
-      } catch (error) {
-        results.errors.push(`Credit empty email failed for user ${user.id}: ${error}`)
       }
     }
 
     // 3. 注册24小时未购买（首单特惠）
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
 
-    const firstOfferUsers = await prisma.user.findMany({
-      where: {
-        emailUnsubscribed: false,
-        createdAt: {
-          gte: twoDaysAgo,
-          lte: oneDayAgo
-        },
-        NOT: {
-          OR: [
-            {
-              creditOrders: {
-                some: {
-                  status: 'PAID'
-                }
-              }
-            },
-            {
-              emailMarketingLogs: {
-                some: {
-                  emailType: 'first_purchase_offer'
-                }
-              }
-            }
-          ]
-        }
-      },
-      include: {
-        creditAccount: true
-      }
-    })
+    const { data: firstOfferUsers, error: firstOfferError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        email,
+        name,
+        created_at,
+        user_credit_accounts(available_credits)
+      `)
+      .eq('email_unsubscribed', false)
+      .gte('created_at', twoDaysAgo)
+      .lte('created_at', oneDayAgo)
 
-    for (const user of firstOfferUsers) {
-      try {
-        if (!user.email) continue
+    if (firstOfferError) {
+      results.errors.push(`Query first offer users failed: ${firstOfferError.message}`)
+    } else if (firstOfferUsers) {
+      for (const user of firstOfferUsers) {
+        try {
+          if (!user.email) continue
 
-        const template = firstPurchaseOfferEmail({
-          userName: user.name || '用户',
-          credits: user.creditAccount?.availableCredits || 0
-        })
+          // 检查是否已购买过
+          const { data: orders } = await supabase
+            .from('credit_orders')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('status', 'PAID')
+            .limit(1)
 
-        const result = await sendEmailWithResend({
-          to: user.email,
-          subject: template.subject,
-          html: template.html
-        })
+          if (orders && orders.length > 0) {
+            continue // 已购买过，跳过
+          }
 
-        if (result.success) {
-          await prisma.emailMarketingLog.create({
-            data: {
-              userId: user.id,
-              emailType: 'first_purchase_offer',
-              sentAt: new Date(),
+          // 检查是否已发送过首单特惠邮件
+          const { data: sentLogs } = await supabase
+            .from('email_marketing_logs')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('email_type', 'first_purchase_offer')
+            .limit(1)
+
+          if (sentLogs && sentLogs.length > 0) {
+            continue
+          }
+
+          const credits = (user.user_credit_accounts as any)[0]?.available_credits || 0
+
+          const template = firstPurchaseOfferEmail({
+            userName: user.name || '用户',
+            credits
+          })
+
+          const result = await sendEmailWithResend({
+            to: user.email,
+            subject: template.subject,
+            html: template.html
+          })
+
+          if (result.success) {
+            await supabase.from('email_marketing_logs').insert({
+              user_id: user.id,
+              email_type: 'first_purchase_offer',
+              sent_at: new Date().toISOString(),
               status: 'SENT',
-              messageId: result.messageId
-            }
-          })
+              message_id: result.messageId
+            })
 
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastMarketingEmailAt: new Date() }
-          })
+            await supabase
+              .from('users')
+              .update({ last_marketing_email_at: new Date().toISOString() })
+              .eq('id', user.id)
 
-          results.firstPurchaseOffer++
+            results.firstPurchaseOffer++
+          }
+        } catch (error) {
+          results.errors.push(`First purchase offer email failed for user ${user.id}: ${error}`)
         }
-      } catch (error) {
-        results.errors.push(`First purchase offer email failed for user ${user.id}: ${error}`)
       }
     }
 
     // 4. 注册7天未购买（最后提醒）
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+    const sevenDaysAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
 
-    const lastChanceUsers = await prisma.user.findMany({
-      where: {
-        emailUnsubscribed: false,
-        createdAt: {
-          gte: eightDaysAgo,
-          lte: sevenDaysAgo
-        },
-        NOT: {
-          OR: [
-            {
-              creditOrders: {
-                some: {
-                  status: 'PAID'
-                }
-              }
-            },
-            {
-              emailMarketingLogs: {
-                some: {
-                  emailType: 'last_chance_offer'
-                }
-              }
-            }
-          ]
-        }
-      }
-    })
+    const { data: lastChanceUsers, error: lastChanceError } = await supabase
+      .from('users')
+      .select('id, email, name, created_at')
+      .eq('email_unsubscribed', false)
+      .gte('created_at', eightDaysAgo)
+      .lte('created_at', sevenDaysAgoDate)
 
-    for (const user of lastChanceUsers) {
-      try {
-        if (!user.email) continue
+    if (lastChanceError) {
+      results.errors.push(`Query last chance users failed: ${lastChanceError.message}`)
+    } else if (lastChanceUsers) {
+      for (const user of lastChanceUsers) {
+        try {
+          if (!user.email) continue
 
-        const template = lastChanceOfferEmail({
-          userName: user.name || '用户'
-        })
+          // 检查是否已购买过
+          const { data: orders } = await supabase
+            .from('credit_orders')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('status', 'PAID')
+            .limit(1)
 
-        const result = await sendEmailWithResend({
-          to: user.email,
-          subject: template.subject,
-          html: template.html
-        })
+          if (orders && orders.length > 0) {
+            continue
+          }
 
-        if (result.success) {
-          await prisma.emailMarketingLog.create({
-            data: {
-              userId: user.id,
-              emailType: 'last_chance_offer',
-              sentAt: new Date(),
+          // 检查是否已发送过最后提醒邮件
+          const { data: sentLogs } = await supabase
+            .from('email_marketing_logs')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('email_type', 'last_chance_offer')
+            .limit(1)
+
+          if (sentLogs && sentLogs.length > 0) {
+            continue
+          }
+
+          const template = lastChanceOfferEmail({
+            userName: user.name || '用户'
+          })
+
+          const result = await sendEmailWithResend({
+            to: user.email,
+            subject: template.subject,
+            html: template.html
+          })
+
+          if (result.success) {
+            await supabase.from('email_marketing_logs').insert({
+              user_id: user.id,
+              email_type: 'last_chance_offer',
+              sent_at: new Date().toISOString(),
               status: 'SENT',
-              messageId: result.messageId
-            }
-          })
+              message_id: result.messageId
+            })
 
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastMarketingEmailAt: new Date() }
-          })
+            await supabase
+              .from('users')
+              .update({ last_marketing_email_at: new Date().toISOString() })
+              .eq('id', user.id)
 
-          results.lastChanceOffer++
+            results.lastChanceOffer++
+          }
+        } catch (error) {
+          results.errors.push(`Last chance offer email failed for user ${user.id}: ${error}`)
         }
-      } catch (error) {
-        results.errors.push(`Last chance offer email failed for user ${user.id}: ${error}`)
       }
     }
 
