@@ -33,46 +33,22 @@ export async function GET(request: NextRequest) {
       errors: [] as string[]
     }
 
-    // 1. 积分不足提醒（积分 < 10，且7天内未发送过此类邮件）
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    
+
+    // 1. 积分不足提醒（积分 < 10）
     const { data: lowCreditUsers, error: lowCreditError } = await supabase
-      .from('users')
-      .select(`
-        id,
-        email,
-        name,
-        user_credit_accounts!inner(available_credits)
-      `)
-      .eq('email_unsubscribed', false)
-      .lt('user_credit_accounts.available_credits', 10)
-      .gt('user_credit_accounts.available_credits', 0)
+      .rpc('get_low_credit_users', { days_ago: 7 })
 
     if (lowCreditError) {
       results.errors.push(`Query low credit users failed: ${lowCreditError.message}`)
-    } else if (lowCreditUsers) {
+    } else {
       for (const user of lowCreditUsers) {
         try {
           if (!user.email) continue
 
-          // 检查7天内是否已发送过
-          const { data: recentLogs } = await supabase
-            .from('email_marketing_logs')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('email_type', 'credit_low')
-            .gte('sent_at', sevenDaysAgo)
-            .limit(1)
-
-          if (recentLogs && recentLogs.length > 0) {
-            continue // 7天内已发送过，跳过
-          }
-
-          const credits = (user.user_credit_accounts as any)[0]?.available_credits || 0
-
           const template = creditLowEmail({
             userName: user.name || '用户',
-            credits
+            credits: user.available_credits || 0
           })
 
           const result = await sendEmailWithResend({
@@ -82,7 +58,6 @@ export async function GET(request: NextRequest) {
           })
 
           if (result.success) {
-            // 记录发送日志
             await supabase.from('email_marketing_logs').insert({
               user_id: user.id,
               email_type: 'credit_low',
@@ -91,7 +66,6 @@ export async function GET(request: NextRequest) {
               message_id: result.messageId
             })
 
-            // 更新用户最后营销邮件时间
             await supabase
               .from('users')
               .update({ last_marketing_email_at: new Date().toISOString() })
@@ -105,37 +79,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. 积分用完提醒（积分 = 0，且7天内未发送过此类邮件）
+    // 2. 积分用完提醒（积分 = 0）
     const { data: emptyCreditUsers, error: emptyCreditError } = await supabase
-      .from('users')
-      .select(`
-        id,
-        email,
-        name,
-        user_credit_accounts!inner(available_credits)
-      `)
-      .eq('email_unsubscribed', false)
-      .eq('user_credit_accounts.available_credits', 0)
+      .rpc('get_empty_credit_users', { days_ago: 7 })
 
     if (emptyCreditError) {
       results.errors.push(`Query empty credit users failed: ${emptyCreditError.message}`)
-    } else if (emptyCreditUsers) {
+    } else {
       for (const user of emptyCreditUsers) {
         try {
           if (!user.email) continue
-
-          // 检查7天内是否已发送过
-          const { data: recentLogs } = await supabase
-            .from('email_marketing_logs')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('email_type', 'credit_empty')
-            .gte('sent_at', sevenDaysAgo)
-            .limit(1)
-
-          if (recentLogs && recentLogs.length > 0) {
-            continue
-          }
 
           const template = creditEmptyEmail({
             userName: user.name || '用户'
@@ -170,58 +123,19 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. 注册24小时未购买（首单特惠）
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-
     const { data: firstOfferUsers, error: firstOfferError } = await supabase
-      .from('users')
-      .select(`
-        id,
-        email,
-        name,
-        created_at,
-        user_credit_accounts(available_credits)
-      `)
-      .eq('email_unsubscribed', false)
-      .gte('created_at', twoDaysAgo)
-      .lte('created_at', oneDayAgo)
+      .rpc('get_first_purchase_offer_users')
 
     if (firstOfferError) {
       results.errors.push(`Query first offer users failed: ${firstOfferError.message}`)
-    } else if (firstOfferUsers) {
+    } else {
       for (const user of firstOfferUsers) {
         try {
           if (!user.email) continue
 
-          // 检查是否已购买过
-          const { data: orders } = await supabase
-            .from('credit_orders')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('status', 'PAID')
-            .limit(1)
-
-          if (orders && orders.length > 0) {
-            continue // 已购买过，跳过
-          }
-
-          // 检查是否已发送过首单特惠邮件
-          const { data: sentLogs } = await supabase
-            .from('email_marketing_logs')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('email_type', 'first_purchase_offer')
-            .limit(1)
-
-          if (sentLogs && sentLogs.length > 0) {
-            continue
-          }
-
-          const credits = (user.user_credit_accounts as any)[0]?.available_credits || 0
-
           const template = firstPurchaseOfferEmail({
             userName: user.name || '用户',
-            credits
+            credits: user.available_credits || 0
           })
 
           const result = await sendEmailWithResend({
@@ -253,46 +167,15 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. 注册7天未购买（最后提醒）
-    const sevenDaysAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
-
     const { data: lastChanceUsers, error: lastChanceError } = await supabase
-      .from('users')
-      .select('id, email, name, created_at')
-      .eq('email_unsubscribed', false)
-      .gte('created_at', eightDaysAgo)
-      .lte('created_at', sevenDaysAgoDate)
+      .rpc('get_last_chance_offer_users')
 
     if (lastChanceError) {
       results.errors.push(`Query last chance users failed: ${lastChanceError.message}`)
-    } else if (lastChanceUsers) {
+    } else {
       for (const user of lastChanceUsers) {
         try {
           if (!user.email) continue
-
-          // 检查是否已购买过
-          const { data: orders } = await supabase
-            .from('credit_orders')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('status', 'PAID')
-            .limit(1)
-
-          if (orders && orders.length > 0) {
-            continue
-          }
-
-          // 检查是否已发送过最后提醒邮件
-          const { data: sentLogs } = await supabase
-            .from('email_marketing_logs')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('email_type', 'last_chance_offer')
-            .limit(1)
-
-          if (sentLogs && sentLogs.length > 0) {
-            continue
-          }
 
           const template = lastChanceOfferEmail({
             userName: user.name || '用户'
