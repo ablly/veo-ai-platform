@@ -10,14 +10,30 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    // 验证Cron密钥
+    // 验证请求来源
+    // Vercel Cron 会自动添加 x-vercel-cron header
+    const cronHeader = request.headers.get('x-vercel-cron')
     const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    
+    // 允许两种验证方式：
+    // 1. Vercel Cron 自动添加的 header
+    // 2. 手动测试时使用的 Authorization header
+    const isVercelCron = cronHeader === '1'
+    const isAuthorized = authHeader === `Bearer ${process.env.CRON_SECRET}`
+    
+    if (!isVercelCron && !isAuthorized) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: 'Unauthorized', debug: { cronHeader, hasAuth: !!authHeader } },
         { status: 401 }
       )
     }
+
+    console.log('🚀 Cron 任务开始执行...')
+    console.log('📋 环境变量检查:', {
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_KEY,
+      hasResendKey: !!process.env.RESEND_API_KEY
+    })
 
     // 初始化 Supabase 客户端（在运行时）
     const supabase = createClient(
@@ -34,14 +50,18 @@ export async function GET(request: NextRequest) {
     }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    console.log('📅 查询时间范围:', sevenDaysAgo)
 
     // 1. 积分不足提醒（积分 < 10）
+    console.log('🔍 查询积分不足用户...')
     const { data: lowCreditUsers, error: lowCreditError } = await supabase
       .rpc('get_low_credit_users', { days_ago: 7 })
 
     if (lowCreditError) {
+      console.error('❌ 查询积分不足用户失败:', lowCreditError)
       results.errors.push(`Query low credit users failed: ${lowCreditError.message}`)
     } else if (lowCreditUsers && Array.isArray(lowCreditUsers)) {
+      console.log(`✅ 找到 ${lowCreditUsers.length} 个积分不足用户`)
       for (const user of lowCreditUsers) {
         try {
           if (!user.email) continue
@@ -209,6 +229,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.log('✅ Cron 任务执行完成')
+    console.log('📊 发送统计:', results)
+
     return NextResponse.json({
       success: true,
       results,
@@ -216,11 +239,12 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('邮件自动化任务失败:', error)
+    console.error('💥 邮件自动化任务失败:', error)
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     )
