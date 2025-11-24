@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     if (lowCreditError) {
       results.errors.push(`Query low credit users failed: ${lowCreditError.message}`)
-    } else {
+    } else if (lowCreditUsers && Array.isArray(lowCreditUsers)) {
       for (const user of lowCreditUsers) {
         try {
           if (!user.email) continue
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     if (emptyCreditError) {
       results.errors.push(`Query empty credit users failed: ${emptyCreditError.message}`)
-    } else {
+    } else if (emptyCreditUsers && Array.isArray(emptyCreditUsers)) {
       for (const user of emptyCreditUsers) {
         try {
           if (!user.email) continue
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
 
     if (firstOfferError) {
       results.errors.push(`Query first offer users failed: ${firstOfferError.message}`)
-    } else {
+    } else if (firstOfferUsers && Array.isArray(firstOfferUsers)) {
       for (const user of firstOfferUsers) {
         try {
           if (!user.email) continue
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
 
     if (lastChanceError) {
       results.errors.push(`Query last chance users failed: ${lastChanceError.message}`)
-    } else {
+    } else if (lastChanceUsers && Array.isArray(lastChanceUsers)) {
       for (const user of lastChanceUsers) {
         try {
           if (!user.email) continue
