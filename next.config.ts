@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'standalone', // Docker 部署必需
+  // 注意：Vercel 部署不需要 standalone 模式
+  // output: 'standalone', // 仅用于 Docker 部署
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion']
   },
