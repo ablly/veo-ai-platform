@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
 
     // 初始化 Supabase 客户端（在运行时）
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
     )
 
     const results = {
