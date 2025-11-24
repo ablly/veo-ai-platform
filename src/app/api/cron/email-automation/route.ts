@@ -8,12 +8,6 @@ import {
   lastChanceOfferEmail
 } from '@/lib/email-templates/marketing-templates'
 
-// 初始化 Supabase 客户端
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET(request: NextRequest) {
   try {
     // 验证Cron密钥
@@ -24,6 +18,12 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // 初始化 Supabase 客户端（在运行时）
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     const results = {
       creditLow: 0,
