@@ -32,14 +32,24 @@ export async function GET(request: NextRequest) {
     console.log('📋 环境变量检查:', {
       hasSupabaseUrl: !!process.env.SUPABASE_URL,
       hasSupabaseKey: !!process.env.SUPABASE_SERVICE_KEY,
-      hasResendKey: !!process.env.RESEND_API_KEY
+      hasResendKey: !!process.env.RESEND_API_KEY,
+      supabaseUrlPrefix: process.env.SUPABASE_URL?.substring(0, 30),
+      supabaseKeyPrefix: process.env.SUPABASE_SERVICE_KEY?.substring(0, 50),
+      supabaseKeyLength: process.env.SUPABASE_SERVICE_KEY?.length
     })
 
     // 初始化 Supabase 客户端（在运行时）
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    )
+    const supabaseUrl = process.env.SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY!
+    
+    console.log('🔑 Supabase 配置:', {
+      url: supabaseUrl,
+      keyStart: supabaseKey.substring(0, 20),
+      keyEnd: supabaseKey.substring(supabaseKey.length - 20),
+      keyLength: supabaseKey.length
+    })
+    
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
     const results = {
       creditLow: 0,
