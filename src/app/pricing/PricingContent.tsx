@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Star, Crown, Award, Zap, CreditCard, Gift, Globe, X, AlertCircle } from "lucide-react"
+import { CheckCircle, Star, Crown, Award, Zap, CreditCard, Gift, Globe, X, AlertCircle, Smartphone } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -26,17 +26,43 @@ interface CreditPackage {
 export default function PricingContent() {
   const [packages, setPackages] = useState<CreditPackage[]>([])
   const [loading, setLoading] = useState(true)
-  const [region, setRegion] = useState<'CN' | 'INTL'>('INTL')
+  const [region, setRegion] = useState<'CN' | 'INTL'>('CN')
   const [manualRegion, setManualRegion] = useState<'CN' | 'INTL' | null>(null)
   const [showCanceledAlert, setShowCanceledAlert] = useState(false)
+  const [showRegionModal, setShowRegionModal] = useState(false)
   const { data: session } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  // 获取套餐数据
   useEffect(() => {
     fetchPackages()
+  }, [])
+
+  // 检查是否首次访问（显示地区选择弹窗）
+  useEffect(() => {
+    // 确保在客户端环境中执行
+    if (typeof window === 'undefined') return
+
+    const hasSelectedRegion = localStorage.getItem('region_selected')
+    const cookieRegion = document.cookie.split('; ').find(row => row.startsWith('user_region='))
     
-    // 检查是否有 canceled 参数
+    console.log('🔍 检查地区选择状态:', { hasSelectedRegion, cookieRegion })
+    
+    if (!hasSelectedRegion && !cookieRegion) {
+      console.log('✅ 首次访问，将显示地区选择弹窗')
+      // 延迟800ms显示弹窗，让页面先加载
+      const timer = setTimeout(() => {
+        setShowRegionModal(true)
+      }, 800)
+      return () => clearTimeout(timer)
+    } else {
+      console.log('ℹ️ 已有地区选择记录，不显示弹窗')
+    }
+  }, [])
+
+  // 检查是否有 canceled 参数
+  useEffect(() => {
     const canceled = searchParams.get('canceled')
     if (canceled === 'true') {
       setShowCanceledAlert(true)
@@ -150,6 +176,13 @@ export default function PricingContent() {
     document.cookie = `user_region=${newRegion}; path=/; max-age=86400`
   }
 
+  const selectRegion = (selectedRegion: 'CN' | 'INTL') => {
+    setManualRegion(selectedRegion)
+    document.cookie = `user_region=${selectedRegion}; path=/; max-age=86400`
+    localStorage.setItem('region_selected', 'true')
+    setShowRegionModal(false)
+  }
+
   const getGradientClass = (index: number) => {
     const gradients = [
       "from-blue-400 to-purple-500",
@@ -187,6 +220,93 @@ export default function PricingContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+      {/* 地区选择弹窗 */}
+      <AnimatePresence>
+        {showRegionModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              // 如果用户点击背景关闭，默认选择CN
+              selectRegion('CN')
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-2xl shadow-2xl max-w-2xl w-full p-8 border border-white/20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-4">
+                  <Globe className="w-8 h-8 text-black" />
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-2">选择您的支付方式</h2>
+                <p className="text-white/70">Choose Your Payment Method</p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* 国内支付 - 支付宝 */}
+                <motion.button
+                  onClick={() => selectRegion('CN')}
+                  className="group relative p-6 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 border-2 border-blue-400/50 hover:border-blue-400 rounded-xl transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="absolute top-4 right-4">
+                    <div className="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full">
+                      推荐
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full flex items-center justify-center mb-4">
+                      <Smartphone className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">国内支付</h3>
+                    <p className="text-blue-300 font-medium mb-3">支付宝 Alipay</p>
+                    <ul className="text-white/80 text-sm space-y-2">
+                      <li>✓ 支持支付宝扫码支付</li>
+                      <li>✓ 人民币结算</li>
+                      <li>✓ 即时到账</li>
+                    </ul>
+                  </div>
+                </motion.button>
+
+                {/* 海外支付 - Stripe */}
+                <motion.button
+                  onClick={() => selectRegion('INTL')}
+                  className="group relative p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/50 hover:border-purple-400 rounded-xl transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center mb-4">
+                      <CreditCard className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">International</h3>
+                    <p className="text-purple-300 font-medium mb-3">Stripe Payment</p>
+                    <ul className="text-white/80 text-sm space-y-2">
+                      <li>✓ Credit/Debit Cards</li>
+                      <li>✓ USD Currency</li>
+                      <li>✓ Secure Payment</li>
+                    </ul>
+                  </div>
+                </motion.button>
+              </div>
+
+              <p className="text-center text-white/50 text-sm mt-6">
+                您可以随时在页面上切换支付方式
+                <br />
+                You can switch payment methods anytime
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 取消支付提示 */}
       <AnimatePresence>
         {showCanceledAlert && (
@@ -252,20 +372,49 @@ export default function PricingContent() {
             }
           </p>
 
-          {/* Current Payment Method Indicator */}
-          <div className="mt-6 flex justify-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded-full">
-              <span className="text-blue-300 text-sm">
-                {currentRegion === 'CN' 
-                  ? '当前支付方式：支付宝 💳'
-                  : 'Current Payment: Stripe (Credit Card) 💳'
-                }
-              </span>
+          {/* 大型支付方式指示器 - 更醒目 */}
+          <motion.div 
+            className="mt-8 flex justify-center"
+            animate={{
+              scale: [1, 1.02, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            <div className={`inline-flex items-center gap-3 px-8 py-4 rounded-2xl border-2 shadow-2xl ${
+              currentRegion === 'CN'
+                ? 'bg-gradient-to-r from-blue-500/30 to-cyan-500/30 border-blue-400/60'
+                : 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border-purple-400/60'
+            }`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                currentRegion === 'CN'
+                  ? 'bg-gradient-to-r from-blue-400 to-cyan-400'
+                  : 'bg-gradient-to-r from-purple-400 to-pink-400'
+              }`}>
+                {currentRegion === 'CN' ? (
+                  <Smartphone className="w-6 h-6 text-white" />
+                ) : (
+                  <CreditCard className="w-6 h-6 text-white" />
+                )}
+              </div>
+              <div className="text-left">
+                <div className={`text-lg font-bold ${
+                  currentRegion === 'CN' ? 'text-blue-200' : 'text-purple-200'
+                }`}>
+                  {currentRegion === 'CN' ? '当前支付方式' : 'Current Payment'}
+                </div>
+                <div className="text-white text-xl font-bold">
+                  {currentRegion === 'CN' ? '支付宝 Alipay' : 'Stripe (Card)'}
+                </div>
+              </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Region Toggle Button */}
-          <div className="mt-4 flex justify-center gap-4 flex-wrap">
+          {/* 优化后的地区切换按钮 */}
+          <div className="mt-6 flex justify-center gap-4 flex-wrap">
             {/* 首单特惠宣传 */}
             <motion.div
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400/20 to-orange-500/20 border-2 border-yellow-400/50 rounded-full shadow-lg"
@@ -302,20 +451,39 @@ export default function PricingContent() {
               </span>
             </div>
             
-            <button
+            <motion.button
               onClick={toggleRegion}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full transition-all group"
+              className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl border-2 transition-all group shadow-lg ${
+                currentRegion === 'CN'
+                  ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-purple-400/50 hover:border-purple-400'
+                  : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 border-blue-400/50 hover:border-blue-400'
+              }`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <Globe className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                currentRegion === 'CN'
+                  ? 'bg-gradient-to-r from-purple-400 to-pink-400'
+                  : 'bg-gradient-to-r from-blue-400 to-cyan-400'
+              }`}>
+                {currentRegion === 'CN' ? (
+                  <CreditCard className="w-5 h-5 text-white" />
+                ) : (
+                  <Smartphone className="w-5 h-5 text-white" />
+                )}
+              </div>
               <div className="flex flex-col items-start">
-                <span className="text-white text-sm font-medium">
-                  {currentRegion === 'CN' ? '切换到国际支付 (Stripe)' : 'Switch to Alipay (支付宝)'}
+                <span className="text-white text-base font-bold">
+                  {currentRegion === 'CN' ? '切换到国际支付' : 'Switch to Alipay'}
                 </span>
-                <span className="text-white/60 text-xs">
-                  {currentRegion === 'CN' ? 'Credit Card Payment' : '国内用户推荐'}
+                <span className={`text-sm font-medium ${
+                  currentRegion === 'CN' ? 'text-purple-300' : 'text-blue-300'
+                }`}>
+                  {currentRegion === 'CN' ? 'Stripe (Credit Card)' : '支付宝 (推荐国内用户)'}
                 </span>
               </div>
-            </button>
+              <Globe className="w-5 h-5 text-white group-hover:rotate-180 transition-transform duration-500" />
+            </motion.button>
           </div>
         </motion.div>
 
@@ -408,7 +576,11 @@ export default function PricingContent() {
                         </>
                       ) : (
                         <>
-                          <CreditCard className="w-4 h-4 mr-2" />
+                          {currentRegion === 'CN' ? (
+                            <Smartphone className="w-4 h-4 mr-2" />
+                          ) : (
+                            <CreditCard className="w-4 h-4 mr-2" />
+                          )}
                           {currentRegion === 'CN' ? '立即购买' : 'Buy Now'}
                         </>
                       )}

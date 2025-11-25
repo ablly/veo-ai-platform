@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试地区选择弹窗</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .status {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+        .status-label {
+            font-weight: bold;
+        }
+        .status-value {
+            font-family: monospace;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-clear {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .btn-clear:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+        .btn-test {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn-test:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+        }
+        .btn-check {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+        .btn-check:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(67, 233, 123, 0.4);
+        }
+        .success {
+            color: #43e97b;
+        }
+        .warning {
+            color: #f5576c;
+        }
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #43e97b;
+        }
+        .instructions h3 {
+            margin-top: 0;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 地区选择弹窗测试工具</h1>
+        
+        <div class="info-box">
+            <h3>当前状态</h3>
+            <div class="status">
+                <span class="status-label">localStorage (region_selected):</span>
+                <span class="status-value" id="localStorage-status">-</span>
+            </div>
+            <div class="status">
+                <span class="status-label">Cookie (user_region):</span>
+                <span class="status-value" id="cookie-status">-</span>
+            </div>
+            <div class="status">
+                <span class="status-label">弹窗应该显示:</span>
+                <span class="status-value" id="modal-should-show">-</span>
+            </div>
+        </div>
+
+        <button class="btn-check" onclick="checkStatus()">🔍 检查当前状态</button>
+        <button class="btn-clear" onclick="clearAll()">🗑️ 清除所有记录（模拟首次访问）</button>
+        <button class="btn-test" onclick="openPricing()">🚀 打开定价页面测试</button>
+
+        <div class="instructions">
+            <h3>📋 测试步骤</h3>
+            <ol>
+                <li>点击 <strong>"清除所有记录"</strong> 按钮，模拟首次访问</li>
+                <li>点击 <strong>"打开定价页面测试"</strong> 按钮</li>
+                <li>等待约1秒，应该会看到地区选择弹窗</li>
+                <li>选择一个支付方式（国内/海外）</li>
+                <li>刷新页面，弹窗不应该再次出现</li>
+                <li>再次点击 <strong>"清除所有记录"</strong>，重复测试</li>
+            </ol>
+            
+            <h3>✅ 预期结果</h3>
+            <ul>
+                <li>首次访问时：弹窗应该显示</li>
+                <li>选择后：记录保存到 localStorage 和 Cookie</li>
+                <li>再次访问：弹窗不再显示</li>
+                <li>支付方式指示器显示正确的图标和文字</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function checkStatus() {
+            const hasLocalStorage = localStorage.getItem('region_selected');
+            const hasCookie = getCookie('user_region');
+            const shouldShow = !hasLocalStorage && !hasCookie;
+
+            document.getElementById('localStorage-status').textContent = hasLocalStorage || '未设置';
+            document.getElementById('localStorage-status').className = hasLocalStorage ? 'status-value success' : 'status-value warning';
+
+            document.getElementById('cookie-status').textContent = hasCookie || '未设置';
+            document.getElementById('cookie-status').className = hasCookie ? 'status-value success' : 'status-value warning';
+
+            document.getElementById('modal-should-show').textContent = shouldShow ? '是 ✅' : '否 ❌';
+            document.getElementById('modal-should-show').className = shouldShow ? 'status-value success' : 'status-value warning';
+        }
+
+        function clearAll() {
+            // 清除 localStorage
+            localStorage.removeItem('region_selected');
+            
+            // 清除 Cookie
+            document.cookie = 'user_region=; path=/; max-age=0';
+            
+            alert('✅ 已清除所有记录！\n现在访问定价页面应该会显示地区选择弹窗。');
+            checkStatus();
+        }
+
+        function openPricing() {
+            window.open('/pricing', '_blank');
+        }
+
+        // 页面加载时检查状态
+        checkStatus();
+    </script>
+</body>
+</html>
