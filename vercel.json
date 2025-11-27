@@ -10,19 +10,5 @@
     "src/app/api/cron/**/*.ts": {
       "maxDuration": 60
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/email-automation",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/update-videos",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/fix-stuck-videos",
-      "schedule": "0 * * * *"
-    }
-  ]
+  }
 }
