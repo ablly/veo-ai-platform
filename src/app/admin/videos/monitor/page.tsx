@@ -162,7 +162,7 @@ export default function VideoMonitorPage() {
                 {data?.stuckVideos || 0}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                超过30分钟未完成
+                超过5分钟未完成
               </p>
             </div>
           </div>
