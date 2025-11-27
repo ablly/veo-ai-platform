@@ -233,21 +233,56 @@ export default function VideoMonitorPage() {
         <CardContent className="flex gap-4">
           <Button
             variant="outline"
-            onClick={() => window.open('/api/admin/videos/health-check', '_blank')}
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/admin/videos/health-check')
+                const result = await response.json()
+                alert(`健康检查完成！\n检查视频数: ${result.checked || 0}\n修复视频数: ${result.fixed || 0}`)
+                fetchMonitorData()
+              } catch (error) {
+                alert('健康检查失败: ' + error)
+              }
+            }}
           >
             <CheckCircle className="w-4 h-4 mr-2" />
             健康检查
           </Button>
           <Button
             variant="outline"
-            onClick={() => window.open('/api/cron/fix-stuck-videos', '_blank')}
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/cron/fix-stuck-videos', {
+                  headers: {
+                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || ''}`
+                  }
+                })
+                const result = await response.json()
+                alert(`修复完成！\n检查视频数: ${result.checked || 0}\n修复视频数: ${result.fixed || 0}`)
+                fetchMonitorData()
+              } catch (error) {
+                alert('修复失败: ' + error)
+              }
+            }}
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             修复卡住视频
           </Button>
           <Button
             variant="outline"
-            onClick={() => window.open('/api/cron/update-videos', '_blank')}
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/cron/update-videos', {
+                  headers: {
+                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || ''}`
+                  }
+                })
+                const result = await response.json()
+                alert(`更新完成！\n更新视频数: ${result.updated || 0}`)
+                fetchMonitorData()
+              } catch (error) {
+                alert('更新失败: ' + error)
+              }
+            }}
           >
             <TrendingUp className="w-4 h-4 mr-2" />
             更新视频状态

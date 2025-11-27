@@ -39,6 +39,11 @@ const adminNavItems = [
     icon: Video
   },
   {
+    name: "视频监控",
+    href: "/admin/videos/monitor", 
+    icon: BarChart3
+  },
+  {
     name: "消息通知",
     href: "/admin/notifications",
     icon: Mail
