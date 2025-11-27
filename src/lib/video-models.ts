@@ -9,6 +9,41 @@ import { logger } from './logger'
 const SUCHUANG_API_URL = API_CONFIG.SUCHUANG.BASE_URL
 const SUCHUANG_API_KEY = API_CONFIG.SUCHUANG.API_KEY
 
+/**
+ * 验证视频URL是否可访问
+ */
+async function validateVideoUrl(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { 
+      method: 'HEAD',
+      signal: AbortSignal.timeout(5000)
+    })
+    
+    const contentType = response.headers.get('content-type')
+    const isValid = response.ok && contentType && contentType.includes('video')
+    
+    if (!isValid) {
+      logger.error('视频URL验证失败', { 
+        context: { 
+          url, 
+          status: response.status, 
+          contentType 
+        } 
+      })
+    }
+    
+    return isValid
+  } catch (error) {
+    logger.error('视频URL验证异常', { 
+      context: { 
+        url, 
+        error: error instanceof Error ? error.message : String(error) 
+      } 
+    })
+    return false
+  }
+}
+
 interface GenerateParams {
   prompt: string
   images?: string[]
@@ -214,6 +249,21 @@ export async function checkVeoStatus(taskId: string): Promise<StatusResult> {
     const data = result.data
     
     if (data.status === 1 && data.content) {
+      // 验证URL是否可访问
+      const isUrlValid = await validateVideoUrl(data.content)
+      
+      if (!isUrlValid) {
+        logger.error('⚠️ VEO视频URL无法访问', { 
+          context: { taskId, videoUrl: data.content } 
+        })
+        
+        // URL无效，返回处理中状态，等待下次检查
+        return {
+          success: true,
+          status: 'PROCESSING'
+        }
+      }
+      
       return {
         success: true,
         status: 'COMPLETED',
@@ -288,7 +338,44 @@ export async function checkSora2Status(taskId: string): Promise<StatusResult> {
     
     // SORA2 API 状态码：0=排队中，1=成功，2=失败，3=生成中
     if (data.status === 1 && data.remote_url) {
-      logger.info('✅ SORA2视频生成成功', { taskId, videoUrl: data.remote_url, pid: data.pid })
+      // 验证URL是否可访问
+      const isUrlValid = await validateVideoUrl(data.remote_url)
+      
+      if (!isUrlValid) {
+        logger.error('⚠️ SORA2视频URL无法访问', { 
+          context: { 
+            taskId, 
+            videoUrl: data.remote_url,
+            transferUrl: data.transfer_url 
+          } 
+        })
+        
+        // 如果remote_url无效，尝试使用transfer_url
+        if (data.transfer_url && data.transfer_url !== data.remote_url) {
+          const isTransferUrlValid = await validateVideoUrl(data.transfer_url)
+          if (isTransferUrlValid) {
+            logger.info('✅ 使用transfer_url替代', { 
+              context: { taskId, videoUrl: data.transfer_url } 
+            })
+            return {
+              success: true,
+              status: 'COMPLETED',
+              videoUrl: data.transfer_url,
+              remixPid: data.pid || null
+            }
+          }
+        }
+        
+        // 两个URL都无效，返回处理中状态，等待下次检查
+        return {
+          success: true,
+          status: 'PROCESSING'
+        }
+      }
+      
+      logger.info('✅ SORA2视频生成成功', { 
+        context: { taskId, videoUrl: data.remote_url, pid: data.pid } 
+      })
       return {
         success: true,
         status: 'COMPLETED',
