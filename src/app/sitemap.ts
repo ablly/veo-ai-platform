@@ -3,6 +3,8 @@ import { MetadataRoute } from 'next'
 /**
  * 动态生成sitemap.xml
  * 帮助搜索引擎快速发现和索引网站页面
+ * 
+ * 访问地址: https://www.veo-ai.site/sitemap.xml
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://www.veo-ai.site'
@@ -17,21 +19,35 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1.0,
     },
     
-    // 核心功能页面
+    // 核心功能页面 - 高优先级
+    {
+      url: `${baseUrl}/generate`,
+      lastModified: currentDate,
+      changeFrequency: 'daily',
+      priority: 0.95,
+    },
     {
       url: `${baseUrl}/pricing`,
       lastModified: currentDate,
       changeFrequency: 'weekly',
       priority: 0.9,
     },
+    
+    // SEO内容页面 - 高优先级（增加内容深度）
     {
-      url: `${baseUrl}/generate`,
+      url: `${baseUrl}/tutorials`,
       lastModified: currentDate,
-      changeFrequency: 'daily',
+      changeFrequency: 'weekly',
       priority: 0.9,
     },
+    {
+      url: `${baseUrl}/faq`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
     
-    // 用户相关页面
+    // 用户认证页面
     {
       url: `${baseUrl}/login`,
       lastModified: currentDate,
@@ -44,42 +60,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
-    {
-      url: `${baseUrl}/profile`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
     
-    // 内容页面
-    {
-      url: `${baseUrl}/gallery`,
-      lastModified: currentDate,
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
+    // 用户功能页面
     {
       url: `${baseUrl}/my-videos`,
       lastModified: currentDate,
       changeFrequency: 'daily',
       priority: 0.7,
     },
-    
-    // 信息页面
     {
-      url: `${baseUrl}/docs`,
+      url: `${baseUrl}/dashboard`,
       lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.6,
+      changeFrequency: 'daily',
+      priority: 0.7,
     },
     
-    // 法律页面
+    // 法律和政策页面
     {
       url: `${baseUrl}/privacy`,
       lastModified: currentDate,
@@ -97,20 +93,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: currentDate,
       changeFrequency: 'monthly',
       priority: 0.5,
-    },
-    
-    // 其他功能页面
-    {
-      url: `${baseUrl}/credits`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/redeem`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.6,
     },
   ]
 }

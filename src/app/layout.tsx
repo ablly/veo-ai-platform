@@ -91,6 +91,18 @@ export const metadata: Metadata = {
     },
   },
   
+  // 规范链接
+  alternates: {
+    canonical: "https://www.veo-ai.site",
+  },
+  
+  // 格式检测
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  
   // 验证码（需要在各搜索引擎后台获取）
   verification: {
     google: "dg6AkvEoozvbl71VAMdEASHbA893w9ia76Xcu9VdoZY", // Google Search Console验证码
@@ -130,8 +142,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // 结构化数据 (JSON-LD)
-  const structuredData = {
+  // 主结构化数据 - SoftwareApplication
+  const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "VEO AI",
@@ -168,14 +180,142 @@ export default function RootLayout({
     }
   };
 
+  // 组织结构化数据
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "VEO AI",
+    "url": "https://www.veo-ai.site",
+    "logo": "https://www.veo-ai.site/icon.png",
+    "description": "专业AI视频生成平台，集成SORA 2.0和VEO 3.1双引擎",
+    "foundingDate": "2024",
+    "sameAs": [
+      "https://twitter.com/veoai"
+    ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "email": "3533912007@qq.com",
+      "contactType": "customer service",
+      "availableLanguage": ["Chinese", "English"]
+    }
+  };
+
+  // 网站结构化数据
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "VEO AI",
+    "url": "https://www.veo-ai.site",
+    "description": "AI视频生成平台 - SORA 2.0 & VEO 3.1 双引擎",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://www.veo-ai.site/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    },
+    "inLanguage": ["zh-CN", "en"]
+  };
+
+  // FAQ 结构化数据
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "VEO AI是什么？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "VEO AI是全球首家集成OpenAI SORA 2.0与Google VEO 3.1双AI引擎的视频生成平台，支持文字生成视频和图片生成视频。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "如何使用VEO AI生成视频？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "注册账号后，输入文字描述或上传参考图片，选择AI模型（SORA 2.0或VEO 3.1），点击生成即可在30-60秒内获得专业视频。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "VEO AI支持哪些支付方式？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "支持支付宝（国内用户）和Stripe（海外用户，包括信用卡、Apple Pay等）双支付系统。"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "新用户有什么优惠？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "新用户注册即送10积分，可免费生成1个SORA 2.0视频。首次充值还额外赠送50%积分！"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "SORA 2.0和VEO 3.1有什么区别？",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "SORA 2.0是OpenAI的视频生成模型，支持10-15秒视频，消耗10积分；VEO 3.1是Google的模型，生成5秒视频，消耗15积分。两者各有特色，可根据需求选择。"
+        }
+      }
+    ]
+  };
+
+  // 面包屑结构化数据
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "首页",
+        "item": "https://www.veo-ai.site"
+      }
+    ]
+  };
+
   return (
     <html lang="zh-CN">
       <head>
-        {/* 结构化数据 */}
+        {/* 字符编码 */}
+        <meta charSet="utf-8" />
+        
+        {/* 结构化数据 - 多Schema */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        />
+        
+        {/* 多语言支持 */}
+        <link rel="alternate" hrefLang="zh-CN" href="https://www.veo-ai.site" />
+        <link rel="alternate" hrefLang="en" href="https://www.veo-ai.site" />
+        <link rel="alternate" hrefLang="x-default" href="https://www.veo-ai.site" />
+        
+        {/* 预连接优化 */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* DNS预解析 */}
+        <link rel="dns-prefetch" href="https://www.veo-ai.site" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

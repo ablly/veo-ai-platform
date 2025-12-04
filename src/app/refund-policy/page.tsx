@@ -1,3 +1,20 @@
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "退款政策 - VEO AI视频生成平台",
+  description: "VEO AI退款政策：14天内未使用积分可申请全额退款，支持支付宝、Stripe原路退回。了解退款条件、流程和时间。",
+  keywords: ["VEO AI退款", "退款政策", "积分退款", "视频生成退款"],
+  openGraph: {
+    title: "退款政策 - VEO AI",
+    description: "14天无忧退款保障，未使用积分可全额退款",
+    url: "https://www.veo-ai.site/refund-policy",
+    type: "website",
+  },
+  alternates: {
+    canonical: "https://www.veo-ai.site/refund-policy",
+  },
+}
+
 export default function RefundPolicyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
