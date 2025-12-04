@@ -18,70 +18,38 @@ export const metadata: Metadata = {
   },
 }
 
-// 产品结构化数据 - 符合Google要求
+// 定价页面结构化数据 - 使用 WebPage + ItemList 避免 Product 的复杂要求
 const pricingStructuredData = {
   "@context": "https://schema.org",
-  "@type": "Product",
-  "name": "VEO AI 积分套餐",
-  "description": "使用SORA 2.0和VEO 3.1双AI引擎生成专业视频的积分套餐",
-  "image": "https://www.veo-ai.site/og-image.png",
-  "brand": {
-    "@type": "Brand",
-    "name": "VEO AI"
-  },
-  "offers": {
-    "@type": "AggregateOffer",
-    "priceCurrency": "CNY",
-    "lowPrice": "49",
-    "highPrice": "299",
-    "offerCount": "3",
-    "availability": "https://schema.org/InStock",
-    "seller": {
-      "@type": "Organization",
-      "name": "VEO AI"
-    },
-    "shippingDetails": {
-      "@type": "OfferShippingDetails",
-      "shippingRate": {
-        "@type": "MonetaryAmount",
-        "value": "0",
-        "currency": "CNY"
+  "@type": "WebPage",
+  "name": "VEO AI 定价方案",
+  "description": "VEO AI积分套餐定价，支持支付宝和Stripe双支付系统",
+  "url": "https://www.veo-ai.site/pricing",
+  "mainEntity": {
+    "@type": "ItemList",
+    "name": "VEO AI 积分套餐",
+    "description": "使用SORA 2.0和VEO 3.1双AI引擎生成专业视频的积分套餐",
+    "numberOfItems": 3,
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "基础套餐",
+        "description": "50积分，可生成约3个视频，¥49"
       },
-      "deliveryTime": {
-        "@type": "ShippingDeliveryTime",
-        "handlingTime": {
-          "@type": "QuantitativeValue",
-          "minValue": "0",
-          "maxValue": "0",
-          "unitCode": "MIN"
-        },
-        "transitTime": {
-          "@type": "QuantitativeValue",
-          "minValue": "0",
-          "maxValue": "0",
-          "unitCode": "MIN"
-        }
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "专业套餐",
+        "description": "150积分，可生成约10个视频，¥99，最受欢迎"
       },
-      "shippingDestination": {
-        "@type": "DefinedRegion",
-        "addressCountry": "CN"
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "企业套餐",
+        "description": "500积分，可生成约33个视频，¥299"
       }
-    },
-    "hasMerchantReturnPolicy": {
-      "@type": "MerchantReturnPolicy",
-      "applicableCountry": "CN",
-      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
-      "merchantReturnDays": "14",
-      "returnMethod": "https://schema.org/ReturnByMail",
-      "returnFees": "https://schema.org/FreeReturn"
-    }
-  },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "reviewCount": "12000",
-    "bestRating": "5",
-    "worstRating": "1"
+    ]
   }
 }
 

@@ -214,10 +214,12 @@ export default function RootLayout({
     "inLanguage": ["zh-CN", "en"]
   };
 
-  // FAQ 结构化数据
+  // FAQ 结构化数据 - 添加name字段修复Google警告
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    "name": "VEO AI 常见问题",
+    "description": "关于VEO AI视频生成平台的常见问题解答",
     "mainEntity": [
       {
         "@type": "Question",

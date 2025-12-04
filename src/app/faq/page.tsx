@@ -103,10 +103,12 @@ const faqs = [
 ]
 
 export default function FAQPage() {
-  // FAQ页面专属结构化数据
+  // FAQ页面专属结构化数据 - 添加name字段修复Google警告
   const faqStructuredData = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    "name": "VEO AI 常见问题",
+    "description": "关于VEO AI视频生成平台的常见问题解答",
     "mainEntity": faqs.flatMap(category => 
       category.questions.map(item => ({
         "@type": "Question",
