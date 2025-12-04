@@ -142,7 +142,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // 主结构化数据 - SoftwareApplication
+  // 主结构化数据 - SoftwareApplication (不包含offers，避免Google警告)
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -150,14 +150,9 @@ export default function RootLayout({
     "applicationCategory": "MultimediaApplication",
     "operatingSystem": "Web",
     "url": "https://www.veo-ai.site",
+    "image": "https://www.veo-ai.site/og-image.png",
+    "screenshot": "https://www.veo-ai.site/og-image.png",
     "description": "全球首家集成OpenAI SORA 2.0与Google VEO 3.1双AI引擎的视频生成平台",
-    "offers": {
-      "@type": "AggregateOffer",
-      "priceCurrency": "CNY",
-      "lowPrice": "49",
-      "highPrice": "299",
-      "offerCount": "3"
-    },
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "4.8",
@@ -177,7 +172,11 @@ export default function RootLayout({
       "@type": "Organization",
       "name": "VEO AI Team",
       "url": "https://www.veo-ai.site"
-    }
+    },
+    "softwareVersion": "2.0",
+    "applicationSubCategory": "AI Video Generator",
+    "downloadUrl": "https://www.veo-ai.site/register",
+    "installUrl": "https://www.veo-ai.site/register"
   };
 
   // 组织结构化数据

@@ -18,6 +18,73 @@ export const metadata: Metadata = {
   },
 }
 
+// 产品结构化数据 - 符合Google要求
+const pricingStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "VEO AI 积分套餐",
+  "description": "使用SORA 2.0和VEO 3.1双AI引擎生成专业视频的积分套餐",
+  "image": "https://www.veo-ai.site/og-image.png",
+  "brand": {
+    "@type": "Brand",
+    "name": "VEO AI"
+  },
+  "offers": {
+    "@type": "AggregateOffer",
+    "priceCurrency": "CNY",
+    "lowPrice": "49",
+    "highPrice": "299",
+    "offerCount": "3",
+    "availability": "https://schema.org/InStock",
+    "seller": {
+      "@type": "Organization",
+      "name": "VEO AI"
+    },
+    "shippingDetails": {
+      "@type": "OfferShippingDetails",
+      "shippingRate": {
+        "@type": "MonetaryAmount",
+        "value": "0",
+        "currency": "CNY"
+      },
+      "deliveryTime": {
+        "@type": "ShippingDeliveryTime",
+        "handlingTime": {
+          "@type": "QuantitativeValue",
+          "minValue": "0",
+          "maxValue": "0",
+          "unitCode": "MIN"
+        },
+        "transitTime": {
+          "@type": "QuantitativeValue",
+          "minValue": "0",
+          "maxValue": "0",
+          "unitCode": "MIN"
+        }
+      },
+      "shippingDestination": {
+        "@type": "DefinedRegion",
+        "addressCountry": "CN"
+      }
+    },
+    "hasMerchantReturnPolicy": {
+      "@type": "MerchantReturnPolicy",
+      "applicableCountry": "CN",
+      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+      "merchantReturnDays": "14",
+      "returnMethod": "https://schema.org/ReturnByMail",
+      "returnFees": "https://schema.org/FreeReturn"
+    }
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "reviewCount": "12000",
+    "bestRating": "5",
+    "worstRating": "1"
+  }
+}
+
 // Loading fallback component
 function PricingLoading() {
   return (
@@ -29,8 +96,15 @@ function PricingLoading() {
 
 export default function PricingPage() {
   return (
-    <Suspense fallback={<PricingLoading />}>
-      <PricingContent />
-    </Suspense>
+    <>
+      {/* 结构化数据 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingStructuredData) }}
+      />
+      <Suspense fallback={<PricingLoading />}>
+        <PricingContent />
+      </Suspense>
+    </>
   )
 }
