@@ -31,56 +31,7 @@ export default function PricingLayout({
 }: {
   children: React.ReactNode
 }) {
-  // 结构化数据 - 产品定价
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": "VEO AI 积分套餐",
-    "description": "使用SORA 2.0和VEO 3.1双AI引擎生成专业视频的积分套餐",
-    "brand": {
-      "@type": "Brand",
-      "name": "VEO AI"
-    },
-    "offers": [
-      {
-        "@type": "Offer",
-        "name": "基础套餐",
-        "price": "49",
-        "priceCurrency": "CNY",
-        "availability": "https://schema.org/InStock",
-        "description": "50积分，可生成约3个视频"
-      },
-      {
-        "@type": "Offer",
-        "name": "专业套餐",
-        "price": "99",
-        "priceCurrency": "CNY",
-        "availability": "https://schema.org/InStock",
-        "description": "150积分，可生成约10个视频，最受欢迎"
-      },
-      {
-        "@type": "Offer",
-        "name": "企业套餐",
-        "price": "299",
-        "priceCurrency": "CNY",
-        "availability": "https://schema.org/InStock",
-        "description": "500积分，可生成约33个视频"
-      }
-    ],
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "reviewCount": "12000"
-    }
-  }
-
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-      {children}
-    </>
-  )
+  // 注意：结构化数据已移至 page.tsx，使用 WebPage+ItemList 类型
+  // 避免 Product/Offer 类型需要的 image、shippingDetails、hasMerchantReturnPolicy 字段
+  return <>{children}</>
 }
