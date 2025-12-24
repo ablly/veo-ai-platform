@@ -53,9 +53,6 @@ export async function POST(request: Request) {
 
     // 生成6位数字验证码
     const code = Math.floor(100000 + Math.random() * 900000).toString()
-    
-    // 验证码有效期（从配置获取）
-    const expiresAt = new Date(Date.now() + PRODUCTION_CONFIG.CREDITS.EMAIL_VERIFICATION_CODE_EXPIRY_MINUTES * 60 * 1000)
 
     // 清除该手机号之前未使用的验证码
     await client.query(
@@ -63,11 +60,12 @@ export async function POST(request: Request) {
       [phone]
     )
 
-    // 存储验证码到数据库
+    // 存储验证码到数据库，使用数据库时间生成过期时间（避免时区问题）
+    const expiryMinutes = PRODUCTION_CONFIG.CREDITS.EMAIL_VERIFICATION_CODE_EXPIRY_MINUTES || 5
     await client.query(
       `INSERT INTO phone_verification_codes (phone, code, expires_at, created_at, ip_address, user_agent)
-       VALUES ($1, $2, $3, NOW(), $4, $5)`,
-      [phone, code, expiresAt, ip, userAgent]
+       VALUES ($1, $2, NOW() + INTERVAL '${expiryMinutes} minutes', NOW(), $3, $4)`,
+      [phone, code, ip, userAgent]
     )
 
     // 发送短信验证码

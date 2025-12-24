@@ -42,55 +42,56 @@ export async function POST(req: NextRequest) {
 
       const user = userCheck.rows[0]
 
-      // 2. 验证验证码
+      // 2. 验证验证码（直接在数据库层面检查过期时间，避免时区问题）
       const codeCheck = await client.query(
         `SELECT id, code, expires_at, used 
          FROM email_verification_codes 
-         WHERE email = $1 AND code = $2 
+         WHERE email = $1 AND code = $2 AND used = false AND expires_at > NOW()
          ORDER BY created_at DESC 
          LIMIT 1`,
         [email, code]
       )
 
       if (codeCheck.rows.length === 0) {
-        await client.query('ROLLBACK')
-        logger.warn('验证码不存在', { email, code })
-        return NextResponse.json(
-          { error: "验证码无效" },
-          { status: 400 }
+        // 检查是否是验证码不存在还是已过期/已使用
+        const anyCode = await client.query(
+          `SELECT id, used, expires_at > NOW() as is_valid 
+           FROM email_verification_codes 
+           WHERE email = $1 AND code = $2 
+           ORDER BY created_at DESC LIMIT 1`,
+          [email, code]
         )
+        
+        await client.query('ROLLBACK')
+        
+        if (anyCode.rows.length === 0) {
+          logger.warn('验证码不存在', { email, code })
+          return NextResponse.json(
+            { error: "验证码无效" },
+            { status: 400 }
+          )
+        } else if (anyCode.rows[0].used) {
+          logger.warn('验证码已被使用', { email, code })
+          return NextResponse.json(
+            { error: "验证码已被使用" },
+            { status: 400 }
+          )
+        } else {
+          logger.warn('验证码已过期', { email, code })
+          return NextResponse.json(
+            { error: "验证码已过期，请重新获取" },
+            { status: 400 }
+          )
+        }
       }
 
       const verificationCode = codeCheck.rows[0]
 
-      // 3. 检查验证码是否已使用
-      if (verificationCode.used) {
-        await client.query('ROLLBACK')
-        logger.warn('验证码已被使用', { email, code })
-        return NextResponse.json(
-          { error: "验证码已被使用" },
-          { status: 400 }
-        )
-      }
-
-      // 4. 检查验证码是否过期
-      const now = new Date()
-      const expiresAt = new Date(verificationCode.expires_at)
-      
-      if (now > expiresAt) {
-        await client.query('ROLLBACK')
-        logger.warn('验证码已过期', { email, code, expiresAt })
-        return NextResponse.json(
-          { error: "验证码已过期，请重新获取" },
-          { status: 400 }
-        )
-      }
-
-      // 5. 加密新密码
+      // 3. 加密新密码
       const hashedPassword = await bcryptjs.hash(newPassword, 12)
       logger.info('密码加密完成', { email })
 
-      // 6. 更新用户密码
+      // 4. 更新用户密码
       await client.query(
         `UPDATE users 
          SET password = $1, updated_at = NOW() 
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
 
       logger.info('用户密码更新成功', { email, userId: user.id })
 
-      // 7. 标记验证码为已使用
+      // 5. 标记验证码为已使用
       await client.query(
         `UPDATE email_verification_codes 
          SET used = true 
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
         [verificationCode.id]
       )
 
-      // 8. 使该用户的所有其他验证码失效（安全措施）
+      // 6. 使该用户的所有其他验证码失效（安全措施）
       await client.query(
         `UPDATE email_verification_codes 
          SET used = true 

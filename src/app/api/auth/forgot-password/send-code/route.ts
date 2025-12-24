@@ -37,15 +37,14 @@ export async function POST(req: NextRequest) {
 
       // 2. 生成6位数字验证码
       const code = Math.floor(100000 + Math.random() * 900000).toString()
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10分钟后过期
 
-      logger.info('生成重置密码验证码', { email, code, expiresAt })
+      logger.info('生成重置密码验证码', { email, code })
 
-      // 3. 保存验证码到数据库（使用相同的email_verification_codes表）
+      // 3. 保存验证码到数据库，使用数据库时间生成过期时间（10分钟，避免时区问题）
       await client.query(
         `INSERT INTO email_verification_codes (email, code, expires_at, created_at, used) 
-         VALUES ($1, $2, $3, NOW(), false)`,
-        [email, code, expiresAt]
+         VALUES ($1, $2, NOW() + INTERVAL '10 minutes', NOW(), false)`,
+        [email, code]
       )
 
       // 4. 发送验证码邮件（使用重置密码模板）
