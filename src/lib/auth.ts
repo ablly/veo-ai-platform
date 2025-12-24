@@ -159,35 +159,81 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        const client = await pool.connect()
+        
         try {
-          // 调用手机验证码验证API
-          const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/verify-phone-code`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              phone: credentials.phone,
-              code: credentials.code
-            })
-          })
+          // 直接查询数据库验证手机验证码（避免 HTTP 请求导致的时区和 URL 问题）
+          const codeResult = await client.query(
+            `SELECT * FROM phone_verification_codes 
+             WHERE phone = $1 AND code = $2 AND expires_at > NOW() AND used = FALSE
+             ORDER BY created_at DESC LIMIT 1`,
+            [credentials.phone, credentials.code]
+          )
 
-          const data = await response.json()
-
-          if (response.ok && data.success) {
-            console.log("✅ 手机验证码登录成功:", data.user.phone)
-            return {
-              id: data.user.id,
-              phone: data.user.phone,
-              name: data.user.name,
-              image: data.user.avatar,
-              avatar: data.user.avatar,
-            }
-          } else {
-            console.log("❌ 手机验证码登录失败:", data.error)
+          if (codeResult.rows.length === 0) {
+            console.log("❌ 手机验证码无效或已过期")
             return null
+          }
+
+          // 标记验证码为已使用
+          await client.query(
+            `UPDATE phone_verification_codes SET used = TRUE WHERE id = $1`,
+            [codeResult.rows[0].id]
+          )
+
+          // 查找或创建用户
+          let userResult = await client.query(
+            'SELECT id, phone, name, avatar FROM users WHERE phone = $1',
+            [credentials.phone]
+          )
+
+          let user
+          if (userResult.rows.length === 0) {
+            // 创建新用户
+            const newUserResult = await client.query(
+              `INSERT INTO users (phone, name, created_at, updated_at) 
+               VALUES ($1, $2, NOW(), NOW()) 
+               RETURNING id, phone, name, avatar`,
+              [credentials.phone, `用户${credentials.phone.slice(-4)}`]
+            )
+            
+            user = newUserResult.rows[0]
+
+            // 给新用户赠送积分
+            const bonusCredits = 5 // 新用户赠送5积分
+            await client.query(
+              `INSERT INTO user_credit_accounts 
+               (user_id, total_credits, available_credits, used_credits, frozen_credits, created_at, updated_at) 
+               VALUES ($1, $2, $2, 0, 0, NOW(), NOW())`,
+              [user.id, bonusCredits]
+            )
+
+            // 记录积分交易
+            await client.query(
+              `INSERT INTO credit_transactions 
+               (user_id, transaction_type, credit_amount, balance_before, balance_after, description, created_at) 
+               VALUES ($1, 'BONUS', $2, 0, $2, '新用户注册赠送 - 可体验视频生成', NOW())`,
+              [user.id, bonusCredits]
+            )
+
+            console.log(`✅ 新用户通过手机号注册: ${credentials.phone}, 赠送积分: ${bonusCredits}`)
+          } else {
+            user = userResult.rows[0]
+            console.log(`✅ 用户通过手机号登录: ${credentials.phone}`)
+          }
+
+          return {
+            id: user.id,
+            phone: user.phone,
+            name: user.name,
+            image: user.avatar,
+            avatar: user.avatar,
           }
         } catch (error) {
           console.error("❌ 手机验证码登录错误:", error)
           return null
+        } finally {
+          client.release()
         }
       }
     }),
