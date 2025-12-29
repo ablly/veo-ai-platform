@@ -12,16 +12,25 @@ export const metadata: Metadata = {
     "SORA注册",
     "VEO注册"
   ],
+  alternates: {
+    canonical: "https://www.veo-ai.site/register",
+  },
   openGraph: {
     title: "注册VEO AI - 送10积分免费体验",
     description: "🎁 新用户送10积分 | ⚡ SORA 2.0 & VEO 3.1双引擎 | 💳 支付宝+Stripe",
     url: "https://www.veo-ai.site/register",
     type: "website",
+    siteName: "VEO AI",
+    locale: "zh_CN",
   },
   twitter: {
     card: "summary_large_image",
     title: "注册VEO AI - 送10积分",
     description: "🎁 免费体验双AI引擎视频生成",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 

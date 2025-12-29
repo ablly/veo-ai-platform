@@ -128,22 +128,56 @@ export const SEO_CONFIG = {
       title: "VEO AI - 双引擎AI视频生成平台 | SORA 2.0 & VEO 3.1 | 支付宝+Stripe",
       description: "全球首家集成OpenAI SORA 2.0与Google VEO 3.1双AI引擎的视频生成平台。支持支付宝（国内）和Stripe（海外）双支付系统，30-60秒极速生成专业视频。新用户注册送10积分，立即免费体验！",
       keywords: "AI视频生成,SORA 2.0,VEO 3.1,双引擎AI,文字生成视频,支付宝充值,Stripe支付,在线视频制作",
+      canonical: "https://www.veo-ai.site",
     },
     pricing: {
       title: "定价方案 - 支持支付宝和Stripe | VEO AI双引擎视频生成",
       description: "VEO AI提供灵活的积分套餐，支持支付宝（国内用户）和Stripe（海外用户）双支付系统。基础套餐49元起，使用SORA 2.0和VEO 3.1双AI引擎生成专业视频。",
       keywords: "AI视频价格,积分套餐,支付宝充值,Stripe支付,视频生成费用",
+      canonical: "https://www.veo-ai.site/pricing",
     },
     login: {
       title: "登录 - VEO AI双引擎视频生成平台",
-      description: "登录VEO AI，使用SORA 2.0和VEO 3.1双AI引擎创作专业视频。支持邮箱、手机号登录。",
-      keywords: "VEO AI登录,视频生成平台登录",
+      description: "登录VEO AI，使用SORA 2.0和VEO 3.1双AI引擎创作专业视频。支持邮箱、手机号验证码登录，安全便捷。",
+      keywords: "VEO AI登录,视频生成平台登录,AI视频登录",
+      canonical: "https://www.veo-ai.site/login",
     },
     register: {
       title: "注册送10积分 - VEO AI双引擎视频生成平台",
-      description: "注册VEO AI即送10积分，免费体验SORA 2.0和VEO 3.1双AI引擎视频生成。支持支付宝和Stripe充值。",
-      keywords: "VEO AI注册,免费视频生成,新用户福利",
+      description: "注册VEO AI即送10积分，免费体验SORA 2.0和VEO 3.1双AI引擎视频生成。支持支付宝和Stripe充值，新用户专享首单特惠。",
+      keywords: "VEO AI注册,免费视频生成,新用户福利,注册送积分",
+      canonical: "https://www.veo-ai.site/register",
     },
+    generate: {
+      title: "AI视频生成 - SORA 2.0 & VEO 3.1双引擎 | VEO AI",
+      description: "使用VEO AI的SORA 2.0和VEO 3.1双AI引擎，30-60秒极速生成专业视频。支持文字生成视频、图片生成视频，多种宽高比可选。",
+      keywords: "AI视频生成,SORA 2.0视频,VEO 3.1视频,文字生成视频,图片生成视频",
+      canonical: "https://www.veo-ai.site/generate",
+    },
+    tutorials: {
+      title: "使用教程 - 如何用AI生成视频 | VEO AI",
+      description: "详细的VEO AI使用教程，教你如何使用SORA 2.0和VEO 3.1双AI引擎生成专业视频。从入门到精通，快速掌握AI视频创作技巧。",
+      keywords: "AI视频教程,SORA教程,VEO教程,视频生成教程,AI创作指南",
+      canonical: "https://www.veo-ai.site/tutorials",
+    },
+    faq: {
+      title: "常见问题 - VEO AI双引擎视频生成平台",
+      description: "VEO AI常见问题解答，包括账户注册、积分充值、视频生成、支付方式等问题的详细解答。",
+      keywords: "VEO AI FAQ,常见问题,视频生成问题,积分问题,支付问题",
+      canonical: "https://www.veo-ai.site/faq",
+    },
+    myVideos: {
+      title: "我的视频 - VEO AI视频管理",
+      description: "管理您在VEO AI生成的所有视频，支持预览、下载、分享和续作功能。",
+      keywords: "我的视频,视频管理,视频下载,视频分享",
+      canonical: "https://www.veo-ai.site/my-videos",
+    },
+  },
+  
+  // IndexNow 配置
+  indexNow: {
+    key: "3c443b360baa41c6b8d938a4988bbf62",
+    keyLocation: "https://www.veo-ai.site/3c443b360baa41c6b8d938a4988bbf62.txt",
   },
 }
 
