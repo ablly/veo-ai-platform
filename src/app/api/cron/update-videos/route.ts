@@ -159,25 +159,50 @@ async function checkVideoStatus(taskId: string, model: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    // 验证请求来源（可选：添加密钥验证）
+    // 验证请求来源
     const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET || 'your-secret-key'
+    const cronSecret = process.env.CRON_SECRET
     
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // 调试信息
+    logger.info("Cron请求收到", { 
+      context: { 
+        hasAuthHeader: !!authHeader,
+        authHeaderPrefix: authHeader?.substring(0, 20),
+        hasCronSecret: !!cronSecret,
+        cronSecretLength: cronSecret?.length || 0
+      }
+    })
+    
+    // 如果没有配置 CRON_SECRET，跳过认证（开发环境）
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      logger.error("认证失败", { 
+        context: { 
+          expected: `Bearer ${cronSecret?.substring(0, 10)}...`,
+          received: authHeader?.substring(0, 30)
+        }
+      })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        debug: {
+          hasCronSecret: !!cronSecret,
+          hasAuthHeader: !!authHeader,
+          authHeaderMatch: authHeader === `Bearer ${cronSecret}`
+        }
+      }, { status: 401 })
     }
 
     logger.info("开始更新视频状态")
 
     // 查询所有PROCESSING状态且有external_task_id的视频（包含model字段）
+    // 扩大时间范围到7天，确保不会遗漏卡住的视频
     const result = await pool.query(`
       SELECT id, external_task_id, prompt, model, created_at
       FROM video_generations
       WHERE status = 'PROCESSING' 
       AND external_task_id IS NOT NULL
-      AND created_at > NOW() - INTERVAL '24 hours'
+      AND created_at > NOW() - INTERVAL '7 days'
       ORDER BY created_at DESC
-      LIMIT 50
+      LIMIT 100
     `)
 
     const videos = result.rows
