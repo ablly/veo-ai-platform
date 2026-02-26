@@ -10,11 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AnimatedBackground } from "@/components/ui/animated-background"
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Zap, Phone } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Zap } from "lucide-react"
 
 function LoginPageContent() {
   const [email, setEmail] = useState("")
-  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [code, setCode] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -22,7 +21,7 @@ function LoginPageContent() {
   const [isSendingCode, setIsSendingCode] = useState(false)
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
-  const [loginMode, setLoginMode] = useState<'password' | 'email-code' | 'phone-code'>('password')
+  const [loginMode, setLoginMode] = useState<'password' | 'email-code'>('password')
   const [countdown, setCountdown] = useState(0)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -79,48 +78,6 @@ function LoginPageContent() {
     }
   }
 
-  // 发送手机验证码
-  const handleSendPhoneCode = async () => {
-    if (!phone) {
-      setError("请先输入手机号码")
-      return
-    }
-
-    if (!/^1[3-9]\d{9}$/.test(phone)) {
-      setError("请输入正确的手机号码")
-      return
-    }
-
-    setIsSendingCode(true)
-    setError("")
-
-    try {
-      const response = await fetch('/api/auth/send-phone-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setSuccessMessage(data.message)
-        setCountdown(60) // 60秒倒计时
-        if (data.devCode) {
-          console.log("🔑 开发环境手机验证码:", data.devCode)
-        }
-      } else {
-        setError(data.error || "发送验证码失败")
-      }
-    } catch (error) {
-      console.error("发送手机验证码错误:", error)
-      setError("发送验证码失败，请稍后重试")
-    } finally {
-      setIsSendingCode(false)
-    }
-  }
-
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -149,19 +106,6 @@ function LoginPageContent() {
           code,
           redirect: false,
         })
-      } else if (loginMode === 'phone-code') {
-        // 手机验证码登录
-        if (!code) {
-          setError("请输入验证码")
-          setIsLoading(false)
-          return
-        }
-        
-        result = await signIn("phone-code", {
-          phone,
-          code,
-          redirect: false,
-        })
       }
 
       if (result?.error) {
@@ -169,8 +113,6 @@ function LoginPageContent() {
           setError("邮箱或密码错误")
         } else if (loginMode === 'email-code') {
           setError("邮箱验证码无效或已过期")
-        } else if (loginMode === 'phone-code') {
-          setError("手机验证码无效或已过期")
         }
       } else {
         const session = await getSession()
@@ -263,55 +205,25 @@ function LoginPageContent() {
                 >
                   邮箱验证码
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginMode('phone-code')}
-                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                    loginMode === 'phone-code'
-                      ? 'bg-yellow-400 text-black'
-                      : 'text-white/70 hover:text-white'
-                  }`}
-                >
-                  手机验证码
-                </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* 邮箱/手机号输入框 */}
-                {loginMode === 'phone-code' ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-white">手机号码</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                        className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                        placeholder="输入您的手机号码"
-                        maxLength={11}
-                        required
-                      />
-                    </div>
+                {/* 邮箱输入框 */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white">邮箱地址</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
+                      placeholder="输入您的邮箱"
+                      required
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-white">邮箱地址</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                        placeholder="输入您的邮箱"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 {loginMode === 'password' ? (
                   <div className="space-y-2">
@@ -354,8 +266,8 @@ function LoginPageContent() {
                       </div>
                       <Button
                         type="button"
-                        onClick={loginMode === 'email-code' ? handleSendEmailCode : handleSendPhoneCode}
-                        disabled={isSendingCode || countdown > 0 || (loginMode === 'email-code' ? !email : !phone)}
+                        onClick={handleSendEmailCode}
+                        disabled={isSendingCode || countdown > 0 || !email}
                         className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 whitespace-nowrap"
                       >
                         {isSendingCode ? "发送中..." : countdown > 0 ? `${countdown}s` : "获取验证码"}
@@ -387,8 +299,7 @@ function LoginPageContent() {
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     />
                   ) : (
-                    loginMode === 'password' ? "登录" : 
-                    loginMode === 'email-code' ? "邮箱验证码登录" : "手机验证码登录"
+                    loginMode === 'password' ? "登录" : "邮箱验证码登录"
                   )}
                 </Button>
               </form>
@@ -405,7 +316,7 @@ function LoginPageContent() {
               <div className="text-center space-y-4">
                 <div className="text-center">
                   <p className="text-white/60 text-sm">
-                    💡 提示：支持QQ邮箱、Gmail、163邮箱等所有邮箱类型，以及中国大陆手机号码
+                    💡 提示：支持QQ邮箱、Gmail、163邮箱等所有邮箱类型
                   </p>
                 </div>
 

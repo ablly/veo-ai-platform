@@ -7,7 +7,6 @@ import { CREDIT_CONFIG } from "@/config/credits"
 const registerSchema = z.object({
   name: z.string().min(2, "姓名至少需要2个字符"),
   email: z.string().email("请输入有效的邮箱地址"),
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号码"),
   password: z.string().min(6, "密码至少需要6个字符"),
 })
 
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     console.log("📝 接收到的数据:", { ...body, password: "***" })
     
-    const { name, email, phone, password } = registerSchema.parse(body)
+    const { name, email, password } = registerSchema.parse(body)
     
     // 尝试连接数据库
     console.log("🔗 正在连接到Supabase数据库...")
@@ -64,36 +63,22 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // 3. 检查手机号是否已存在
-      const checkPhone = await client.query(
-        'SELECT id FROM users WHERE phone = $1',
-        [phone]
-      )
-      
-      if (checkPhone.rows.length > 0) {
-        await client.query('ROLLBACK')
-        return NextResponse.json(
-          { error: "该手机号已被注册" },
-          { status: 400 }
-        )
-      }
-      
-      // 4. 加密密码
+      // 3. 加密密码
       const hashedPassword = await bcryptjs.hash(password, 12)
       console.log("🔐 密码加密完成")
       
-      // 5. 创建用户（标记邮箱已验证）
+      // 4. 创建用户（标记邮箱已验证）
       const createUserResult = await client.query(
-        `INSERT INTO users (email, phone, name, password, email_verified, created_at, updated_at) 
-         VALUES ($1, $2, $3, $4, NOW(), NOW(), NOW()) 
-         RETURNING id, email, phone, name, created_at`,
-        [email, phone, name, hashedPassword]
+        `INSERT INTO users (email, name, password, email_verified, created_at, updated_at) 
+         VALUES ($1, $2, $3, NOW(), NOW(), NOW()) 
+         RETURNING id, email, name, created_at`,
+        [email, name, hashedPassword]
       )
       
       const newUser = createUserResult.rows[0]
       console.log("✅ 用户创建成功，ID:", newUser.id)
       
-      // 6. 创建积分账户（赠送新用户体验积分）
+      // 5. 创建积分账户（赠送新用户体验积分）
       const bonusCredits = CREDIT_CONFIG.WELCOME_CREDITS
       await client.query(
         `INSERT INTO user_credit_accounts 
@@ -101,7 +86,7 @@ export async function POST(req: NextRequest) {
          VALUES ($1, $2, $2, 0, 0, NOW(), NOW())`,
         [newUser.id, bonusCredits]
       )
-      // 5. 记录积分交易
+      // 6. 记录积分交易
       await client.query(
         `INSERT INTO credit_transactions 
          (user_id, transaction_type, credit_amount, balance_before, balance_after, description, created_at) 

@@ -9,13 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AnimatedBackground } from "@/components/ui/animated-background"
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Zap, User, Phone, Shield } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Zap, User, Shield } from "lucide-react"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
     emailCode: "",
     password: "",
     confirmPassword: "",
@@ -156,7 +155,6 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          phone: formData.phone,
           password: formData.password,
         }),
       })
@@ -363,23 +361,6 @@ export default function RegisterPage() {
                           onChange={handleInputChange("name")}
                           className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
                           placeholder="输入您的姓名"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-white">手机号码</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
-                          className="pl-10 bg-white/5 backdrop-blur-sm border-white/30 text-white placeholder:text-white/60 focus:border-yellow-400 focus:bg-white/10 hover:bg-white/8"
-                          placeholder="输入您的手机号码"
-                          maxLength={11}
                           required
                         />
                       </div>
