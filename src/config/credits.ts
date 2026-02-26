@@ -13,8 +13,8 @@ export const CREDIT_CONFIG = {
     }
   },
 
-  // 新用户注册赠送
-  WELCOME_CREDITS: 10,    // 新用户注册赠送10积分（不够生成1个视频，引导购买）
+  // 新用户注册赠送（已关闭）
+  WELCOME_CREDITS: 0,
 
   // 积分套餐配置
   PACKAGES: [

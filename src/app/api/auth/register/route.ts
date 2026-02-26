@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import bcryptjs from "bcryptjs"
 import { z } from "zod"
 import pool from "@/lib/db"
-import { CREDIT_CONFIG } from "@/config/credits"
 
 const registerSchema = z.object({
   name: z.string().min(2, "姓名至少需要2个字符"),
@@ -78,20 +77,12 @@ export async function POST(req: NextRequest) {
       const newUser = createUserResult.rows[0]
       console.log("✅ 用户创建成功，ID:", newUser.id)
       
-      // 5. 创建积分账户（赠送新用户体验积分）
-      const bonusCredits = CREDIT_CONFIG.WELCOME_CREDITS
+      // 5. 创建积分账户（初始积分为0）
       await client.query(
         `INSERT INTO user_credit_accounts 
          (user_id, total_credits, available_credits, used_credits, frozen_credits, created_at, updated_at) 
-         VALUES ($1, $2, $2, 0, 0, NOW(), NOW())`,
-        [newUser.id, bonusCredits]
-      )
-      // 6. 记录积分交易
-      await client.query(
-        `INSERT INTO credit_transactions 
-         (user_id, transaction_type, credit_amount, balance_before, balance_after, description, created_at) 
-         VALUES ($1, 'BONUS', $2, 0, $2, '新用户注册赠送 - 可体验视频生成', NOW())`,
-        [newUser.id, bonusCredits]
+         VALUES ($1, 0, 0, 0, 0, NOW(), NOW())`,
+        [newUser.id]
       )
       
       // 提交事务
@@ -100,12 +91,12 @@ export async function POST(req: NextRequest) {
       // 返回用户信息
       return NextResponse.json({
         success: true,
-        message: "注册成功！已赠送10积分 🎉",
+        message: "注册成功！🎉",
         user: {
           id: newUser.id,
           name: newUser.name,
           email: newUser.email,
-          credits: bonusCredits,
+          credits: 0,
           createdAt: newUser.created_at
         }
       })
