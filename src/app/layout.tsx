@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from '@vercel/analytics/next';
 import { AuthProvider } from "@/components/providers/auth-provider"
 import { ToastProvider } from "@/lib/toast-context"
 import { Navigation } from "@/components/layout/navigation"
@@ -328,6 +329,7 @@ export default function RootLayout({
             {children}
           </AuthProvider>
         </ToastProvider>
+        <Analytics />
       </body>
     </html>
   );
